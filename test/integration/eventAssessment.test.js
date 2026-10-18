@@ -8,15 +8,17 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { getPool, closePool, query } from '../../src/db/pool.js';
 import { applyMigrations } from '../../src/db/migrator.js';
-import { config } from '../../src/config/env.js';
 import { ingestSnapshot } from '../../src/modules/ingestion/ingestionService.js';
 import {
   getEventAssessments,
   getLatestAssessment,
   assessAndSaveEvent,
 } from '../../src/modules/assessment/assessmentService.js';
+import { getTestConfig, resetTestDatabase } from '../helpers/dbCleanup.js';
 
 describe('Phase 3 Integration: Review-Priority Assessment Engine', () => {
+  const config = getTestConfig();
+
   beforeAll(async () => {
     getPool(config.databaseUrl);
     await applyMigrations({ connectionString: config.databaseUrl });
@@ -27,16 +29,7 @@ describe('Phase 3 Integration: Review-Priority Assessment Engine', () => {
   });
 
   beforeEach(async () => {
-    await query('TRUNCATE audit_ledger CASCADE;');
-    await query('DELETE FROM event_reviews;');
-    await query('DELETE FROM event_assessments;');
-    await query('DELETE FROM correlation_decisions;');
-    await query('DELETE FROM event_observations;');
-    await query('DELETE FROM conjunction_events;');
-    await query('DELETE FROM batch_errors;');
-    await query('DELETE FROM raw_observations;');
-    await query('DELETE FROM space_objects;');
-    await query('DELETE FROM ingestion_batches;');
+    await resetTestDatabase(config.databaseUrl);
   });
 
   it('1. Ingestion of snapshot creates conjunction event and automatically persists initial assessment', async () => {

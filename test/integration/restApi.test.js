@@ -16,10 +16,11 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
-import { getPool, closePool, query } from '../../src/db/pool.js';
+import { getPool, closePool } from '../../src/db/pool.js';
 import { applyMigrations } from '../../src/db/migrator.js';
-import { config } from '../../src/config/env.js';
+import { getTestConfig, resetTestDatabase } from '../helpers/dbCleanup.js';
 
+const config = getTestConfig();
 const VALID_API_KEY = config.operatorApiKey;
 
 const SAMPLE_CSV_1 =
@@ -45,16 +46,7 @@ describe('Phase 5 Integration: REST API & Operational Queries', () => {
   });
 
   beforeEach(async () => {
-    await query('TRUNCATE audit_ledger CASCADE;');
-    await query('DELETE FROM event_reviews;');
-    await query('DELETE FROM event_assessments;');
-    await query('DELETE FROM correlation_decisions;');
-    await query('DELETE FROM event_observations;');
-    await query('DELETE FROM conjunction_events;');
-    await query('DELETE FROM batch_errors;');
-    await query('DELETE FROM raw_observations;');
-    await query('DELETE FROM space_objects;');
-    await query('DELETE FROM ingestion_batches;');
+    await resetTestDatabase(config.databaseUrl);
   });
 
   describe('1. Health & Readiness Endpoint', () => {

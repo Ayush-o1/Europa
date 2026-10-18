@@ -51,9 +51,25 @@ describe('Environment Configuration Loader', () => {
     expect(config.correlationStepToleranceMinutes).toBe(20);
   });
 
-  it('identifies test environment correctly', () => {
+  it('identifies test environment correctly and prevents silent fallback to dev database', () => {
     const testConfig = loadConfig({ NODE_ENV: 'test' });
     expect(testConfig.isTest).toBe(true);
     expect(testConfig.isProduction).toBe(false);
+    expect(testConfig.databaseUrl).toContain('test');
+
+    // When a dev database URL is supplied in test mode, loadConfig rejects it and targets a test database
+    const unsafeConfig = loadConfig({
+      NODE_ENV: 'test',
+      DATABASE_URL: 'postgresql://localhost:5432/europa_dev',
+    });
+    expect(unsafeConfig.databaseUrl).not.toContain('europa_dev');
+    expect(unsafeConfig.databaseUrl).toContain('europa_test');
+
+    // When an explicit test database URL is provided, it is accepted
+    const customTestConfig = loadConfig({
+      NODE_ENV: 'test',
+      TEST_DATABASE_URL: 'postgresql://ci-user:pass@db:5432/custom_ci_test',
+    });
+    expect(customTestConfig.databaseUrl).toBe('postgresql://ci-user:pass@db:5432/custom_ci_test');
   });
 });

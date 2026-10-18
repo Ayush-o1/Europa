@@ -4,14 +4,14 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { loadConfig } from '../../src/config/env.js';
 import { getPool, query, closePool } from '../../src/db/pool.js';
 import { applyMigrations } from '../../src/db/migrator.js';
 import { ingestSnapshot } from '../../src/modules/ingestion/ingestionService.js';
 import { reapPastTcaEvents } from '../../src/modules/lifecycle/lifecycleManager.js';
+import { getTestConfig, resetTestDatabase } from '../helpers/dbCleanup.js';
 
 describe('Phase 2 Integration: Event Correlation Engine', () => {
-  const config = loadConfig({ NODE_ENV: 'test' });
+  const config = getTestConfig();
 
   beforeAll(async () => {
     getPool(config.databaseUrl);
@@ -23,16 +23,7 @@ describe('Phase 2 Integration: Event Correlation Engine', () => {
   });
 
   beforeEach(async () => {
-    await query('TRUNCATE audit_ledger CASCADE;');
-    await query('DELETE FROM event_reviews;');
-    await query('DELETE FROM event_assessments;');
-    await query('DELETE FROM correlation_decisions;');
-    await query('DELETE FROM event_observations;');
-    await query('DELETE FROM conjunction_events;');
-    await query('DELETE FROM batch_errors;');
-    await query('DELETE FROM raw_observations;');
-    await query('DELETE FROM space_objects;');
-    await query('DELETE FROM ingestion_batches;');
+    await resetTestDatabase(config.databaseUrl);
   });
 
   it('1. First observation creates one new event', async () => {

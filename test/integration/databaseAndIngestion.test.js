@@ -5,16 +5,16 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { loadConfig } from '../../src/config/env.js';
 import { getPool, query, closePool } from '../../src/db/pool.js';
 import { applyMigrations, getMigrationStatus } from '../../src/db/migrator.js';
 import { ingestSnapshot } from '../../src/modules/ingestion/ingestionService.js';
+import { getTestConfig, resetTestDatabase } from '../helpers/dbCleanup.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = path.join(__dirname, '../fixtures');
 
 describe('Phase 1 Integration: Database and Ingestion Pipeline', () => {
-  const config = loadConfig({ NODE_ENV: 'test' });
+  const config = getTestConfig();
 
   beforeAll(async () => {
     getPool(config.databaseUrl);
@@ -27,17 +27,7 @@ describe('Phase 1 Integration: Database and Ingestion Pipeline', () => {
   });
 
   beforeEach(async () => {
-    // Clean test tables in dependency order
-    await query('TRUNCATE audit_ledger CASCADE;');
-    await query('DELETE FROM event_reviews;');
-    await query('DELETE FROM event_assessments;');
-    await query('DELETE FROM correlation_decisions;');
-    await query('DELETE FROM event_observations;');
-    await query('DELETE FROM conjunction_events;');
-    await query('DELETE FROM batch_errors;');
-    await query('DELETE FROM raw_observations;');
-    await query('DELETE FROM space_objects;');
-    await query('DELETE FROM ingestion_batches;');
+    await resetTestDatabase(config.databaseUrl);
   });
 
   describe('Migration System Verification', () => {

@@ -7,10 +7,10 @@ import request from 'supertest';
 import { createApp } from '../../src/app.js';
 import { getPool, closePool, query } from '../../src/db/pool.js';
 import { applyMigrations } from '../../src/db/migrator.js';
-import { config } from '../../src/config/env.js';
-import { resetTestDatabase } from '../helpers/dbCleanup.js';
+import { getTestConfig, resetTestDatabase } from '../helpers/dbCleanup.js';
 
 describe('Orbital Propagation REST Endpoints & Database Persistence', () => {
+  const config = getTestConfig();
   let app;
   const operatorKey = config.operatorApiKey || 'test-operator-key';
 

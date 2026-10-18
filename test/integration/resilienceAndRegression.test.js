@@ -11,17 +11,22 @@ import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
 import { getPool, closePool, query } from '../../src/db/pool.js';
 import { applyMigrations } from '../../src/db/migrator.js';
-import { config } from '../../src/config/env.js';
 import { ingestSnapshot } from '../../src/modules/ingestion/ingestionService.js';
 import { recordReview } from '../../src/modules/review/reviewService.js';
 import { verifyAuditLedger } from '../../src/modules/audit/auditLedger.js';
-import { resetTestDatabase, assertSafeTestEnvironment } from '../helpers/dbCleanup.js';
+import {
+  getTestConfig,
+  resetTestDatabase,
+  assertSafeTestEnvironment,
+} from '../helpers/dbCleanup.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const FIXTURES_DIR = path.resolve(__dirname, '../fixtures');
 
 describe('Part 7E: Regression and Resilience Test Suite', () => {
+  const config = getTestConfig();
+
   beforeAll(async () => {
     getPool(config.databaseUrl);
     await applyMigrations({ connectionString: config.databaseUrl });
