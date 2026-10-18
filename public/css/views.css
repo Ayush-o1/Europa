@@ -298,10 +298,10 @@
 }
 
 .timeline-marker.latest {
-  border-color: var(--color-brand);
-  background-color: rgba(99, 102, 241, 0.2);
-  color: #fff;
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent-light);
+  box-shadow: 0 0 12px var(--color-accent-glow);
 }
 
 .timeline-content {
@@ -426,8 +426,8 @@
 
 /* Scientific Methodology Notice Box */
 .methodology-notice {
-  background-color: rgba(99, 102, 241, 0.05);
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  background-color: var(--color-orbital-bg);
+  border: 1px solid var(--border-teal);
   border-radius: var(--radius-sm);
   padding: var(--space-3) var(--space-3-5);
   font-size: 11px;
@@ -438,7 +438,7 @@
 }
 
 .methodology-notice strong {
-  color: var(--text-primary);
+  color: var(--text-editorial);
 }
 
 /* Operator Review Form */
@@ -497,11 +497,13 @@
 
 .sgp4-result-card {
   background-color: var(--bg-surface-2);
-  border: 1px solid var(--color-brand);
+  border: 1px solid var(--border-teal);
   border-radius: var(--radius-sm);
   padding: var(--space-4);
   margin-bottom: var(--space-3);
-  box-shadow: 0 0 16px rgba(99, 102, 241, 0.15);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.35),
+    0 0 16px var(--color-orbital-glow);
 }
 
 .sgp4-result-grid {
@@ -545,8 +547,8 @@
 
 .dropzone:hover,
 .dropzone.dragover {
-  border-color: var(--color-brand);
-  background-color: rgba(99, 102, 241, 0.04);
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-bg);
 }
 
 .dropzone-icon {

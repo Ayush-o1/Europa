@@ -57,13 +57,13 @@
   --color-orbital-border: rgba(78, 135, 150, 0.35);
   --color-orbital-glow: rgba(78, 135, 150, 0.2);
 
-  /* Operational Brand Accent (Classic Workbench Indigo) */
-  --color-brand: #6366f1;
-  --color-brand-hover: #4f46e5;
-  --color-brand-light: #818cf8;
-  --color-brand-bg: rgba(99, 102, 241, 0.12);
-  --color-brand-border: rgba(99, 102, 241, 0.35);
-  --color-brand-glow: rgba(99, 102, 241, 0.2);
+  /* Operational Brand Accent (Unified with Aerospace Amber System) */
+  --color-brand: #e06c3a;
+  --color-brand-hover: #f07d4b;
+  --color-brand-light: #f59e6c;
+  --color-brand-bg: rgba(224, 108, 58, 0.12);
+  --color-brand-border: rgba(224, 108, 58, 0.38);
+  --color-brand-glow: rgba(224, 108, 58, 0.22);
 
   /* Telemetry & Urgency Tiers */
   --color-critical: #f43f5e;

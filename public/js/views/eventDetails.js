@@ -482,7 +482,7 @@ async function loadEventDetailsData(container, eventId) {
                     <span class="factor-weight">${latestAssessment.component_scores.missDistance?.score || 0} / 50</span>
                   </div>
                   <div class="distribution-bar-track">
-                    <div class="distribution-bar-fill" style="background: var(--color-brand); width: ${((latestAssessment.component_scores.missDistance?.score || 0) / 50) * 100}%;"></div>
+                    <div class="distribution-bar-fill" style="background: var(--color-orbital); width: ${((latestAssessment.component_scores.missDistance?.score || 0) / 50) * 100}%;"></div>
                   </div>
                   <p class="factor-reason">${escapeHtml(latestAssessment.explanations.missDistance || 'Proximity evaluation')}</p>
                 </div>
@@ -494,7 +494,7 @@ async function loadEventDetailsData(container, eventId) {
                     <span class="factor-weight">${latestAssessment.component_scores.timeToTca?.score || 0} / 30</span>
                   </div>
                   <div class="distribution-bar-track">
-                    <div class="distribution-bar-fill" style="background: var(--color-brand); width: ${((latestAssessment.component_scores.timeToTca?.score || 0) / 30) * 100}%;"></div>
+                    <div class="distribution-bar-fill" style="background: var(--color-orbital); width: ${((latestAssessment.component_scores.timeToTca?.score || 0) / 30) * 100}%;"></div>
                   </div>
                   <p class="factor-reason">${escapeHtml(latestAssessment.explanations.timeToTca || 'Encounter lead time')}</p>
                 </div>
@@ -506,7 +506,7 @@ async function loadEventDetailsData(container, eventId) {
                     <span class="factor-weight">${latestAssessment.component_scores.probability?.score || 0} / 15</span>
                   </div>
                   <div class="distribution-bar-track">
-                    <div class="distribution-bar-fill" style="background: var(--color-brand); width: ${((latestAssessment.component_scores.probability?.score || 0) / 15) * 100}%;"></div>
+                    <div class="distribution-bar-fill" style="background: var(--color-orbital); width: ${((latestAssessment.component_scores.probability?.score || 0) / 15) * 100}%;"></div>
                   </div>
                   <p class="factor-reason">${escapeHtml(latestAssessment.explanations.probability || 'Upper-bound catalog metric')}</p>
                 </div>
@@ -518,7 +518,7 @@ async function loadEventDetailsData(container, eventId) {
                     <span class="factor-weight">${latestAssessment.component_scores.dataFreshness?.score || 0} / 5</span>
                   </div>
                   <div class="distribution-bar-track">
-                    <div class="distribution-bar-fill" style="background: var(--color-brand); width: ${((latestAssessment.component_scores.dataFreshness?.score || 0) / 5) * 100}%;"></div>
+                    <div class="distribution-bar-fill" style="background: var(--color-orbital); width: ${((latestAssessment.component_scores.dataFreshness?.score || 0) / 5) * 100}%;"></div>
                   </div>
                   <p class="factor-reason">${escapeHtml(latestAssessment.explanations.dataFreshness || 'Epoch propagation uncertainty')}</p>
                 </div>

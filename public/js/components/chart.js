@@ -98,10 +98,10 @@ export function renderEvolutionChart(observations) {
         ? 'var(--color-critical)'
         : p.rangeKm < 5.0
           ? 'var(--color-high)'
-          : 'var(--color-brand)'
+          : 'var(--color-orbital-light)'
       : isTightest
         ? 'var(--color-high)'
-        : 'var(--color-brand)';
+        : 'var(--color-orbital)';
 
     pointsSvg += `
       <g class="chart-point-group" tabindex="0">
@@ -118,8 +118,8 @@ export function renderEvolutionChart(observations) {
       <svg viewBox="0 0 ${width} ${height}" class="chart-svg" preserveAspectRatio="none" role="img" aria-label="Miss distance prediction trend chart">
         <defs>
           <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--color-brand)" stop-opacity="0.25" />
-            <stop offset="100%" stop-color="var(--color-brand)" stop-opacity="0.0" />
+            <stop offset="0%" stop-color="var(--color-orbital)" stop-opacity="0.22" />
+            <stop offset="100%" stop-color="var(--color-orbital)" stop-opacity="0.0" />
           </linearGradient>
         </defs>
 
@@ -137,7 +137,7 @@ export function renderEvolutionChart(observations) {
         ${areaD ? `<path d="${areaD}" fill="url(#areaGradient)" />` : ''}
 
         <!-- Trajectory Line -->
-        ${pathD ? `<path d="${pathD}" fill="none" stroke="var(--color-brand-light)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />` : ''}
+        ${pathD ? `<path d="${pathD}" fill="none" stroke="var(--color-orbital-light)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />` : ''}
 
         <!-- Points -->
         ${pointsSvg}
@@ -195,9 +195,9 @@ export function renderEncounterProfileChart(screeningResult) {
         <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + plotHeight}" stroke="var(--border-subtle)" />
 
         <!-- Center TCA marker line -->
-        <line x1="${tcaX}" y1="${padding.top}" x2="${tcaX}" y2="${padding.top + plotHeight}" stroke="rgba(99,102,241,0.3)" stroke-dasharray="3,3" />
+        <line x1="${tcaX}" y1="${padding.top}" x2="${tcaX}" y2="${padding.top + plotHeight}" stroke="rgba(78,135,150,0.4)" stroke-dasharray="3,3" />
 
-        <path d="${pathD}" fill="none" stroke="var(--color-cyan)" stroke-width="2" />
+        <path d="${pathD}" fill="none" stroke="var(--color-orbital-light)" stroke-width="2" />
 
         <!-- TCA Closest point marker -->
         <circle cx="${tcaX}" cy="${tcaY}" r="5" fill="var(--color-critical)" stroke="var(--bg-surface-0)" stroke-width="2" />
