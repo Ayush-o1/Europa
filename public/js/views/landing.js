@@ -168,7 +168,7 @@ export function renderLanding(container) {
                   <!-- Conjunction Intersection Node (TCA) -->
                   <g transform="translate(345, 126)">
                     <!-- Proximity Range Circle -->
-                    <circle cx="0" cy="0" r="18" fill="rgba(224, 108, 58, 0.12)" stroke="rgba(224, 108, 58, 0.4)" stroke-width="1" />
+                    <circle cx="0" cy="0" r="18" fill="rgba(224, 108, 58, 0.12)" stroke="rgba(224, 108, 58, 0.4)" stroke-width="1" class="tca-proximity-circle" />
                     <!-- Crosshair -->
                     <line x1="-8" y1="0" x2="8" y2="0" stroke="var(--color-accent)" stroke-width="1.5" />
                     <line x1="0" y1="-8" x2="0" y2="8" stroke="var(--color-accent)" stroke-width="1.5" />
@@ -194,7 +194,7 @@ export function renderLanding(container) {
       </section>
 
       <!-- Section C: The Problem & The Product -->
-      <section class="landing-section" id="problem">
+      <section class="landing-section reveal-section" id="problem">
         <div class="landing-container">
           <span class="section-tag">01 / Operational Challenge</span>
           <h2 class="section-title">
@@ -254,7 +254,7 @@ export function renderLanding(container) {
       </section>
 
       <!-- Section D: Product Showcase -->
-      <section class="landing-section" id="showcase">
+      <section class="landing-section reveal-section" id="showcase">
         <div class="landing-container">
           <span class="section-tag section-tag-teal">02 / Verified Interface</span>
           <h2 class="section-title">
@@ -303,7 +303,7 @@ export function renderLanding(container) {
       </section>
 
       <!-- Section E: Platform Capabilities -->
-      <section class="landing-section" id="capabilities">
+      <section class="landing-section reveal-section" id="capabilities">
         <div class="landing-container">
           <span class="section-tag">03 / Engineering Capabilities</span>
           <h2 class="section-title">
@@ -378,7 +378,7 @@ export function renderLanding(container) {
       </section>
 
       <!-- Section F: How It Works / Engineering Sequence -->
-      <section class="landing-section" id="workflow">
+      <section class="landing-section reveal-section" id="workflow">
         <div class="landing-container">
           <span class="section-tag section-tag-teal">04 / Pipeline Architecture</span>
           <h2 class="section-title">
@@ -429,7 +429,7 @@ export function renderLanding(container) {
       </section>
 
       <!-- Section G: Trust & Scientific Boundaries -->
-      <section class="landing-section" id="limitations">
+      <section class="landing-section reveal-section" id="limitations">
         <div class="landing-container">
           <div class="limitations-box">
             <div class="limitations-header">
@@ -480,7 +480,7 @@ export function renderLanding(container) {
       </section>
 
       <!-- Section H: Architecture & Final Call-to-Action -->
-      <section class="landing-section" id="architecture">
+      <section class="landing-section reveal-section" id="architecture">
         <div class="landing-container">
           <span class="section-tag">05 / Technical Specifications</span>
           <h2 class="section-title">
@@ -593,7 +593,21 @@ export function renderLanding(container) {
  * - Direct routing to workspace
  */
 function setupLandingInteractions(container) {
-  // 1. Mobile Menu Toggle
+  // 1. Sticky Nav Scroll State
+  const navbar = container.querySelector('#landing-navbar');
+  if (navbar) {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        navbar.classList.add('scrolled');
+      } else {
+        navbar.classList.remove('scrolled');
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+  }
+
+  // 2. Mobile Menu Toggle
   const menuBtn = container.querySelector('#landing-menu-btn');
   const drawer = container.querySelector('#landing-mobile-drawer');
 
@@ -624,8 +638,8 @@ function setupLandingInteractions(container) {
     });
   }
 
-  // 2. Showcase Screenshot Switcher
-  const showcaseTabs = container.querySelectorAll('.showcase-tab');
+  // 3. Showcase Screenshot Switcher
+  const showcaseTabs = Array.from(container.querySelectorAll('.showcase-tab'));
   const activeImg = container.querySelector('#showcase-active-img');
   const captionText = container.querySelector('#showcase-caption-text');
   const metaTag = container.querySelector('#showcase-meta-tag');
@@ -661,7 +675,7 @@ function setupLandingInteractions(container) {
     },
   };
 
-  showcaseTabs.forEach(tab => {
+  showcaseTabs.forEach((tab, index) => {
     tab.addEventListener('click', () => {
       showcaseTabs.forEach(t => {
         t.classList.remove('active');
@@ -680,9 +694,47 @@ function setupLandingInteractions(container) {
       if (captionText) captionText.innerHTML = data.caption;
       if (metaTag) metaTag.textContent = data.meta;
     });
+
+    // Keyboard navigation (Arrow keys / Home / End)
+    tab.addEventListener('keydown', e => {
+      let targetIdx = null;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        targetIdx = (index + 1) % showcaseTabs.length;
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        targetIdx = (index - 1 + showcaseTabs.length) % showcaseTabs.length;
+      } else if (e.key === 'Home') {
+        targetIdx = 0;
+      } else if (e.key === 'End') {
+        targetIdx = showcaseTabs.length - 1;
+      }
+
+      if (targetIdx !== null) {
+        e.preventDefault();
+        showcaseTabs[targetIdx].focus();
+        showcaseTabs[targetIdx].click();
+      }
+    });
   });
 
-  // 3. Workspace CTAs -> Switch to Workspace
+  // 4. Progressive Section Reveals via IntersectionObserver
+  const revealSections = container.querySelectorAll('.reveal-section');
+  if ('IntersectionObserver' in window && revealSections.length > 0) {
+    container.classList.add('reveal-ready');
+    const revealObserver = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-revealed');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { root: null, rootMargin: '0px 0px -40px 0px', threshold: 0.08 },
+    );
+    revealSections.forEach(sec => revealObserver.observe(sec));
+  }
+
+  // 5. Workspace CTAs -> Switch to Workspace
   const openAppButtons = [
     container.querySelector('#btn-nav-open-app'),
     container.querySelector('#btn-hero-open-app'),

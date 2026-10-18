@@ -238,6 +238,28 @@
   overflow: visible;
 }
 
+.chart-point-group {
+  cursor: pointer;
+  outline: none;
+}
+
+.chart-point-group circle {
+  transition:
+    r var(--transition-fast),
+    stroke var(--transition-fast),
+    stroke-width var(--transition-fast),
+    filter var(--transition-fast);
+  transform-origin: center;
+}
+
+.chart-point-group:hover circle,
+.chart-point-group:focus-visible circle {
+  r: 7px;
+  stroke: #ffffff;
+  stroke-width: 2.5px;
+  filter: drop-shadow(0 0 6px rgba(78, 135, 150, 0.6));
+}
+
 .chart-tooltip {
   position: absolute;
   pointer-events: none;
@@ -504,6 +526,7 @@
   box-shadow:
     0 4px 20px rgba(0, 0, 0, 0.35),
     0 0 16px var(--color-orbital-glow);
+  animation: slideUp var(--transition-normal);
 }
 
 .sgp4-result-grid {
@@ -541,7 +564,10 @@
   gap: var(--space-3);
   background-color: var(--bg-surface-0);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
   text-align: center;
 }
 
@@ -549,6 +575,7 @@
 .dropzone.dragover {
   border-color: var(--color-accent);
   background-color: var(--color-accent-bg);
+  transform: scale(1.005);
 }
 
 .dropzone-icon {

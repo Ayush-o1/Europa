@@ -161,10 +161,25 @@
   --shadow-glow-amber: 0 0 28px rgba(224, 108, 58, 0.18);
   --shadow-glow-teal: 0 0 28px rgba(78, 135, 150, 0.18);
 
-  /* Transitions */
-  --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 180ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-smooth: 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* Motion & Easing Curves */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-physic: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* Duration Tokens */
+  --duration-instant: 90ms;
+  --duration-fast: 140ms;
+  --duration-normal: 220ms;
+  --duration-smooth: 320ms;
+  --duration-reveal: 420ms;
+
+  /* Standard Motion Tokens */
+  --transition-instant: var(--duration-instant) var(--ease-out);
+  --transition-fast: var(--duration-fast) var(--ease-out);
+  --transition-normal: var(--duration-normal) var(--ease-out);
+  --transition-smooth: var(--duration-smooth) var(--ease-out);
+  --transition-reveal: var(--duration-reveal) var(--ease-out);
 
   /* Layout Dimensions */
   --header-height: 56px;

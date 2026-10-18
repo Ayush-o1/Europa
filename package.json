@@ -16,7 +16,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:migrate": "node scripts/migrate.js",
-    "db:seed": "node scripts/seedDemoData.js"
+    "db:seed": "node scripts/seedDemoData.js",
+    "screenshots:phase-3": "node scripts/capturePhase3Screenshots.js"
   },
   "engines": {
     "node": ">=22.0.0"
