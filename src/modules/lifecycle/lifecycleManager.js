@@ -4,6 +4,7 @@
  */
 
 import { getPool } from '../../db/pool.js';
+import { appendAuditEntry } from '../audit/auditLedger.js';
 
 /**
  * Transitions events that have passed their predicted TCA to PAST_TCA.
@@ -38,6 +39,21 @@ export async function reapPastTcaEvents(options = {}) {
        RETURNING id, canonical_pair_key, latest_tca;`,
       [referenceTime, bufferMinutes],
     );
+
+    for (const row of res.rows) {
+      await appendAuditEntry(client, {
+        eventId: row.id,
+        actionType: 'LIFECYCLE_TRANSITION',
+        actorType: 'SYSTEM',
+        actorId: 'VOIDLINE_ENGINE',
+        payload: {
+          previousState: 'MONITORING',
+          newState: 'PAST_TCA',
+          latestTca: row.latest_tca,
+          referenceTime,
+        },
+      });
+    }
 
     return {
       transitionedCount: res.rowCount,

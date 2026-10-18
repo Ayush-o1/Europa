@@ -23,6 +23,8 @@ describe('Phase 2 Integration: Event Correlation Engine', () => {
   });
 
   beforeEach(async () => {
+    await query('TRUNCATE audit_ledger CASCADE;');
+    await query('DELETE FROM event_reviews;');
     await query('DELETE FROM event_assessments;');
     await query('DELETE FROM correlation_decisions;');
     await query('DELETE FROM event_observations;');

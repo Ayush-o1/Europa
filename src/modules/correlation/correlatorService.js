@@ -6,6 +6,7 @@
 import { getPool } from '../../db/pool.js';
 import { evaluateObservationMatch, DEFAULT_MATCHING_POLICY } from './matchingPolicy.js';
 import { assessAndSaveEvent } from '../assessment/assessmentService.js';
+import { appendAuditEntry } from '../audit/auditLedger.js';
 
 /**
  * Correlates all un-correlated observations in an ingestion batch.
@@ -193,6 +194,19 @@ export async function correlateBatch(batchId, options = {}) {
             referenceTime: obs.captured_at,
           });
 
+          await appendAuditEntry(client, {
+            eventId: createdEvent.id,
+            actionType: 'EVENT_CREATED',
+            actorType: 'SYSTEM',
+            actorId: 'VOIDLINE_ENGINE',
+            payload: {
+              canonicalPairKey: createdEvent.canonical_pair_key,
+              initialTca: createdEvent.initial_tca,
+              latestRangeKm: createdEvent.latest_range_km,
+              observationId: obs.id,
+            },
+          });
+
           activeEvents.push(createdEvent);
           matchedEventsInBatch.add(createdEvent.id);
           stats.eventsCreated += 1;
@@ -279,6 +293,20 @@ export async function correlateBatch(batchId, options = {}) {
           await assessAndSaveEvent(client, updatedEventRecord, obs, {
             referenceTime: obs.captured_at,
             isBackfill,
+          });
+
+          await appendAuditEntry(client, {
+            eventId: updatedEventRecord.id,
+            actionType: 'EVENT_CORRELATED',
+            actorType: 'SYSTEM',
+            actorId: 'VOIDLINE_ENGINE',
+            payload: {
+              decisionType,
+              observationId: obs.id,
+              isBackfill,
+              latestRangeKm: updatedEventRecord.latest_range_km,
+              observationCount: updatedEventRecord.observation_count,
+            },
           });
 
           // Record correlation decision

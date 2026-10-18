@@ -7,6 +7,8 @@
 
 import { getPool } from '../../db/pool.js';
 import { assessConjunctionEvent } from './assessmentEngine.js';
+import { appendAuditEntry } from '../audit/auditLedger.js';
+import { checkAndFlagReReviewNeeded } from '../review/reviewService.js';
 
 /**
  * Persists an assessment record and updates the event's urgency level.
@@ -73,6 +75,23 @@ export async function recordAssessment(
     );
   }
 
+  // Record assessment event in cryptographic audit ledger
+  await appendAuditEntry(client, {
+    eventId,
+    actionType: 'ASSESSMENT_RECORDED',
+    actorType: 'SYSTEM',
+    actorId: 'VOIDLINE_ENGINE',
+    payload: {
+      assessmentId: res.rows[0].id,
+      observationId: observationId || null,
+      score: assessmentResult.score,
+      urgencyLevel: assessmentResult.urgencyLevel,
+      ruleSetVersion: assessmentResult.ruleSetVersion,
+      missDistanceKm: assessmentResult.inputSnapshot.missDistanceKm,
+      isCurrent,
+    },
+  });
+
   return res.rows[0];
 }
 
@@ -86,8 +105,10 @@ export async function recordAssessment(
  * @returns {Promise<{ assessment: object, result: object }>}
  */
 export async function assessAndSaveEvent(client, event, observation = null, options = {}) {
-  const result = assessConjunctionEvent(event, observation, options);
   const isCurrent = !options.isBackfill;
+  const priorAssessment = isCurrent ? await getLatestAssessment(event.id, { client }) : null;
+
+  const result = assessConjunctionEvent(event, observation, options);
   const assessment = await recordAssessment(
     client,
     event.id,
@@ -95,6 +116,10 @@ export async function assessAndSaveEvent(client, event, observation = null, opti
     result,
     isCurrent,
   );
+
+  if (isCurrent && observation) {
+    await checkAndFlagReReviewNeeded(client, event, priorAssessment, result, observation);
+  }
 
   return { assessment, result };
 }

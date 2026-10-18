@@ -24,13 +24,15 @@ Voidline/
 ├── src/
 │   ├── config/          # Environment configuration & validation
 │   ├── db/              # PostgreSQL pool, transactional migrator & schema SQL
-│   │   ├── migrations/  # Incremental pure SQL migrations (001, 002, 003)
+│   │   ├── migrations/  # Incremental pure SQL migrations (001, 002, 003, 004)
 │   │   ├── migrator.js  # Transactional migration runner with advisory locking
 │   │   └── pool.js      # Connection pool & query helpers
 │   ├── modules/         # Domain modules
 │   │   ├── ingestion/   # SOCRATES CSV parser, validator & ingestion service
 │   │   ├── correlation/ # Event correlation service & matching heuristics
 │   │   ├── assessment/  # Review-priority assessment engine & versioned rules
+│   │   ├── review/      # Operator review actions & justification tracking
+│   │   ├── audit/       # Cryptographic hash-chained audit ledger
 │   │   └── lifecycle/   # Event lifecycle state transitions (e.g., PAST_TCA)
 │   └── utils/           # Shared utility functions
 ├── scripts/             # Operational & developer CLI tools (migrate, replay, audit)
@@ -38,8 +40,8 @@ Voidline/
 │   └── snapshots/       # Immutable local raw snapshot archive
 ├── test/
 │   ├── fixtures/        # Sample scenario CSV datasets (real, malformed)
-│   ├── unit/            # Unit tests for domain logic, parser, matching & assessment
-│   └── integration/     # Database ingestion, correlation & assessment tests
+│   ├── unit/            # Unit tests for domain logic, parser, rules & audit ledger
+│   └── integration/     # Database ingestion, correlation, assessment & review tests
 ├── public/              # Static frontend assets (HTML, CSS, vanilla JS)
 ├── eslint.config.js     # ESLint flat configuration
 ├── vitest.config.js     # Vitest test runner configuration
@@ -132,4 +134,12 @@ npm run db:migrate
   - Full historical assessment trace preservation (`is_current` flagging, preventing overwrite of prior evaluations).
   - Out-of-order backfill safety: Late historical arrivals do not demote current assessment urgency.
   - Transparent explainability storing diagnostic component reasons, input snapshots, and rule versions.
-- **Phase 4 (Analyst Review & Ledger Audit Trail):** Pending explicit authorization.
+- **Phase 4 (Analyst Review & Ledger Audit Trail):** Completed and verified.
+  - Additive migration `004_review_and_audit_tables.sql`: `event_reviews`, `audit_ledger`, and database-level mutation prevention triggers.
+  - Operational review workflow: `ACKNOWLEDGE`, `ESCALATE`, `DISMISS`, `REQUEST_REASSESSMENT` actions with mandatory meaningful justification (>= 10 characters).
+  - Decoupled state dimensions: `review_status` remains strictly decoupled from `lifecycle_state` and `urgency_level`.
+  - Automated re-review triggering: Marks `review_status = 'REQUIRES_RE_REVIEW'` when subsequent observations materially elevate urgency, contract miss distance by >= 20%, or cross under 24 hours to TCA, preserving previous review history.
+  - Cryptographic append-only audit ledger: SHA-256 hash chaining over canonical serialized payloads with advisory-locked concurrency protection.
+  - Verification & anti-tampering: Trigger strictly prohibits `UPDATE` or `DELETE` on `audit_ledger`, and `verifyAuditLedger()` validates the hash chain from genesis to head.
+  - Documented limitation: Database-local hash chaining detects SQL tampering but cannot prevent root administrative manipulation without external distributed anchoring.
+- **Phase 5 (REST API & Operational Queries):** Pending explicit authorization.
