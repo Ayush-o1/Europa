@@ -14,6 +14,7 @@
 
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { getTestConfig, resetTestDatabase } from '../helpers/dbCleanup.js';
 import { query, closePool } from '../../src/db/pool.js';
@@ -26,6 +27,24 @@ const FIXTURES_DIR = path.resolve(__dirname, '../fixtures');
 const VALID_KEY = testConfig.operatorApiKey || 'test-operator-key';
 
 test.describe('Part 7A: Real Browser End-to-End Workflows', () => {
+  test.beforeAll(async () => {
+    // Calibrate snapshot fixture modification times for deterministic cross-platform E2E execution:
+    // Snapshot 1 (Baseline): 01:00:00 UTC
+    // Snapshot 2 (Tightening update): 02:00:00 UTC
+    // Snapshot 4 (Subsequent poll identical to baseline): 03:00:00 UTC
+    const baseline = path.join(FIXTURES_DIR, 'synthetic_scenario_1_baseline.csv');
+    const tightening = path.join(FIXTURES_DIR, 'synthetic_scenario_2_tightening.csv');
+    const identical = path.join(FIXTURES_DIR, 'synthetic_scenario_4_identical.csv');
+
+    const t1 = new Date('2026-10-18T01:00:00.000Z');
+    const t2 = new Date('2026-10-18T02:00:00.000Z');
+    const t3 = new Date('2026-10-18T03:00:00.000Z');
+
+    fs.utimesSync(baseline, t1, t1);
+    fs.utimesSync(tightening, t2, t2);
+    fs.utimesSync(identical, t3, t3);
+  });
+
   test.beforeEach(async () => {
     await resetTestDatabase();
   });
@@ -144,6 +163,8 @@ test.describe('Part 7A: Real Browser End-to-End Workflows', () => {
     await expect(outcomePanel).toContainText('DUPLICATE_IGNORED');
 
     // 5. Separate snapshot containing identical observations (confirms observations without duplicating events)
+    // Note: Calibrated in beforeAll to 03:00:00 UTC (subsequent to baseline 01:00:00 UTC) so this snapshot is
+    // processed as a subsequent observation poll rather than an identical duplicate re-upload.
     const identicalFixture = path.join(FIXTURES_DIR, 'synthetic_scenario_4_identical.csv');
     await page.setInputFiles('#csv-file-input', identicalFixture);
     await submitBtn.click();
