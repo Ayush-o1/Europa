@@ -138,3 +138,22 @@ export function getReviewBadgeClass(status) {
       return 'badge-brand';
   }
 }
+
+/**
+ * Computes modulo-10 checksum for a 69-character TLE line.
+ * @param {string} line
+ * @returns {number}
+ */
+export function computeTleChecksum(line) {
+  let sum = 0;
+  const len = Math.min(line.length, 68);
+  for (let i = 0; i < len; i++) {
+    const char = line[i];
+    if (char >= '0' && char <= '9') {
+      sum += parseInt(char, 10);
+    } else if (char === '-') {
+      sum += 1;
+    }
+  }
+  return sum % 10;
+}

@@ -234,6 +234,26 @@ test.describe('Part 7A: Real Browser End-to-End Workflows', () => {
     const eventAuditTable = page.locator('.card:has-text("Event Cryptographic Audit Trail")');
     await expect(eventAuditTable).toBeVisible();
     await expect(eventAuditTable).toContainText('EVENT_CREATED');
+
+    // Verify Experimental Orbital Screening (SGP4) panel (Phase 8)
+    const sgp4Card = page.locator('#card-sgp4-screening');
+    await expect(sgp4Card).toBeVisible();
+    await expect(sgp4Card).toContainText('Experimental Orbital Screening (SGP4)');
+    await expect(sgp4Card).toContainText('Scientific Limitation Notice');
+
+    // Click "Load Sample TLEs"
+    await page.click('#btn-load-sample-tles');
+    await expect(page.locator('#sgp4-primary-line1')).not.toHaveValue('');
+    await expect(page.locator('#sgp4-secondary-line1')).not.toHaveValue('');
+
+    // Submit SGP4 encounter estimation
+    await page.click('#btn-compute-sgp4');
+    await expect(page.locator('#toast-container')).toContainText(
+      'SGP4 orbital encounter screening computed successfully',
+    );
+    await expect(page.locator('#sgp4-results-container')).toContainText('LATEST SCREENING RESULT');
+    await expect(page.locator('#sgp4-results-container')).toContainText('SGP4 Miss Distance:');
+    await expect(page.locator('#sgp4-results-container')).toContainText('Relative Velocity:');
   });
 
   test('Scenario D: Operator review workflow, justification rules, re-review, and controlled audit integrity violation', async ({

@@ -25,7 +25,7 @@ export default defineConfig({
   webServer: {
     command: 'node src/index.js',
     url: 'http://127.0.0.1:3099/api/v1/health',
-    reuseExistingServer: !isCI,
+    reuseExistingServer: false,
     timeout: 15000,
     env: {
       PORT: '3099',

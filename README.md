@@ -37,7 +37,8 @@ Voidline/
 │   │   ├── assessment/  # Review-priority assessment engine & versioned rules
 │   │   ├── review/      # Operator review actions & justification tracking
 │   │   ├── audit/       # Cryptographic hash-chained audit ledger
-│   │   └── lifecycle/   # Event lifecycle state transitions (e.g., PAST_TCA)
+│   │   ├── lifecycle/   # Event lifecycle state transitions (e.g., PAST_TCA)
+│   │   └── propagation/ # SGP4 orbital propagator, TLE validator & encounter estimation
 │   ├── utils/           # Shared utility functions
 │   ├── app.js           # Express application factory (separated from listen for testing)
 │   └── index.js         # Server runner & graceful termination handler
@@ -174,19 +175,21 @@ The Voidline API is exposed under `/api/v1` with consistent JSON envelopes:
 
 ### Endpoint Catalog
 
-| Method | Endpoint                                | Auth     | Description                                                                |
-| :----- | :-------------------------------------- | :------- | :------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/health`                        | None     | Application and database readiness status (safe, no credential leakage).   |
-| `POST` | `/api/v1/ingest/snapshots`              | Operator | Upload CelesTrak SOCRATES CSV snapshot; triggers correlation & assessment. |
-| `GET`  | `/api/v1/ingest/batches`                | None     | Paginated ingestion batch history (omits internal filesystem paths).       |
-| `GET`  | `/api/v1/events`                        | None     | Paginated event discovery with strict sorting and multi-field filtering.   |
-| `GET`  | `/api/v1/events/:id`                    | None     | Event details joined with space objects, latest observation, and review.   |
-| `GET`  | `/api/v1/events/:id/history`            | None     | Chronological observation history sorted by snapshot capture time.         |
-| `GET`  | `/api/v1/events/:id/assessments`        | None     | Full assessment score and explanation history for an event.                |
-| `GET`  | `/api/v1/events/:id/assessments/latest` | None     | Current active review-priority assessment (404 if unpopulated).            |
-| `POST` | `/api/v1/events/:id/reviews`            | Operator | Record justified operator review (`ACKNOWLEDGE`, `ESCALATE`, `DISMISS`).   |
-| `GET`  | `/api/v1/events/:id/audit`              | None     | Paginated cryptographic audit trail entries for an encounter event.        |
-| `GET`  | `/api/v1/audit/verify`                  | None     | Read-only cryptographic verification of entire hash-chained audit ledger.  |
+| Method | Endpoint                                | Auth              | Description                                                                                       |
+| :----- | :-------------------------------------- | :---------------- | :------------------------------------------------------------------------------------------------ |
+| `GET`  | `/api/v1/health`                        | None              | Application and database readiness status (safe, no credential leakage).                          |
+| `POST` | `/api/v1/ingest/snapshots`              | Operator          | Upload CelesTrak SOCRATES CSV snapshot; triggers correlation & assessment.                        |
+| `GET`  | `/api/v1/ingest/batches`                | None              | Paginated ingestion batch history (omits internal filesystem paths).                              |
+| `GET`  | `/api/v1/events`                        | None              | Paginated event discovery with strict sorting and multi-field filtering.                          |
+| `GET`  | `/api/v1/events/:id`                    | None              | Event details joined with space objects, latest observation, and review.                          |
+| `GET`  | `/api/v1/events/:id/history`            | None              | Chronological observation history sorted by snapshot capture time.                                |
+| `GET`  | `/api/v1/events/:id/assessments`        | None              | Full assessment score and explanation history for an event.                                       |
+| `GET`  | `/api/v1/events/:id/assessments/latest` | None              | Current active review-priority assessment (404 if unpopulated).                                   |
+| `POST` | `/api/v1/events/:id/reviews`            | Operator          | Record justified operator review (`ACKNOWLEDGE`, `ESCALATE`, `DISMISS`).                          |
+| `GET`  | `/api/v1/events/:id/audit`              | None              | Paginated cryptographic audit trail entries for an encounter event.                               |
+| `GET`  | `/api/v1/audit/verify`                  | None              | Read-only cryptographic verification of entire hash-chained audit ledger.                         |
+| `POST` | `/api/v1/propagation/estimate`          | Public / Operator | Compute SGP4 encounter trajectory, refined TCA, and miss distance (persists if eventId provided). |
+| `GET`  | `/api/v1/events/:id/propagation`        | None              | Retrieve historical SGP4 orbital encounter screenings for an event.                               |
 
 ---
 
@@ -265,6 +268,26 @@ curl -s -X POST "http://localhost:3000/api/v1/events/14a0cf7d-2b3f-4e05-9502-861
 curl -s "http://localhost:3000/api/v1/audit/verify"
 ```
 
+#### 9. Compute SGP4 Orbital Encounter Screening (Experimental)
+
+```bash
+curl -s -X POST "http://localhost:3000/api/v1/propagation/estimate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "primaryTle": {
+      "line1": "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9009",
+      "line2": "2 25544  51.6400 208.9163 0004780  69.9862  25.2906 15.49815016431907"
+    },
+    "secondaryTle": {
+      "line1": "1 34454U 93036SX  24001.50000000  .00001234  00000-0  56789-4 0  9004",
+      "line2": "2 34454  74.0400 210.1234 0021500 120.4500  45.6700 14.85000000213455"
+    },
+    "nominalTca": "2024-01-01T12:00:00.000Z",
+    "searchWindowMinutes": 10,
+    "stepSeconds": 5
+  }'
+```
+
 ---
 
 ## Current Status
@@ -331,6 +354,16 @@ curl -s "http://localhost:3000/api/v1/audit/verify"
   - Comprehensive regression and resilience integration suite (`test/integration/resilienceAndRegression.test.js`) verifying concurrent ingestion safety under PostgreSQL advisory locks, transactional rollback isolation, chronological sequence preservation during out-of-order backfills, and safeguards against running destructive cleanup in production.
   - Repeatable performance benchmark harness (`scripts/benchmark.js`) recording real metrics across 100, 1,000, and 5,000 synthetic rows and multi-worker concurrency.
   - Automated Continuous Integration workflow (`.github/workflows/ci.yml`) executing formatting checks, ESLint, database migrations, Vitest suite, and Playwright browser tests against a containerized PostgreSQL service.
+- **Phase 8 (Experimental SGP4 Orbital Propagation & Encounter Estimation):** Completed and verified.
+  - Pinned Dependency: `satellite.js@7.1.0` (MIT license, 0 external dependencies, actively maintained implementation of Vallado's revised SGP4 algorithm).
+  - TLE Validation & Parsing (`src/modules/propagation/tleValidator.js`): Strict NORAD standard verification enforcing 69-character line lengths, prefixes (`1 `, `2 `), modulo-10 checksums, catalog number consistency, fractional day epoch decoding, and orbital parameter boundaries.
+  - SGP4 Trajectory Propagation (`src/modules/propagation/sgp4Propagator.js`): Evaluates mean orbital elements under low-order zonal harmonics ($J_2, J_3, J_4$), BSTAR drag, and lunar/solar third-body gravitational perturbations (SDP4), generating True Equator Mean Equinox (TEME) position and velocity vectors.
+  - Encounter Estimation Engine (`src/modules/propagation/encounterEstimator.js`): Refines Time of Closest Approach (TCA), minimum miss distance, and relative speed across a bounded search window using coarse sweep and fine (100 ms) resolution refinement. Tracks TLE age in hours and flags stale elements (>72h).
+  - Additive Relational Schema (`src/db/migrations/005_orbital_propagation_tables.sql`): `orbital_screenings` table with cascading foreign keys to `conjunction_events` and indexed object pairs.
+  - Cryptographic Audit Trail: Appends verified `ORBITAL_SCREENING_COMPUTED` entries to the hash-chained `audit_ledger` when operator-authenticated screenings are executed.
+  - REST Endpoints: `POST /api/v1/propagation/estimate` (on-demand screening with optional persistence) and `GET /api/v1/events/:id/propagation` (historical screenings).
+  - Analytical Frontend Workbench: Interactive SGP4 screening card on Event Details view featuring 1-click sample TLE loading, trajectory computation, and direct comparison with SOCRATES reported range.
+  - Scientific Disclaimers & Limitations: Prominently identifies all calculations as experimental screening aids. Reaffirms that SGP4 mean elements lack covariance matrices and do not compute authoritative collision probabilities ($P_c$), and that SOCRATES `MAX_PROB` is an upper-bound screening metric.
 
 ---
 

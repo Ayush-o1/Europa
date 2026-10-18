@@ -393,3 +393,141 @@ export function validateReviewBody(req, res, next) {
 
   next();
 }
+
+/**
+ * Validates request body for SGP4 orbital propagation screening.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+export function validatePropagationBody(req, res, next) {
+  const { primaryTle, secondaryTle, nominalTca, searchWindowMinutes, stepSeconds, eventId } =
+    req.body || {};
+
+  if (!primaryTle || typeof primaryTle !== 'object') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: "Field 'primaryTle' is required and must contain 'line1' and 'line2'.",
+      },
+    });
+  }
+
+  if (
+    !primaryTle.line1 ||
+    !primaryTle.line2 ||
+    typeof primaryTle.line1 !== 'string' ||
+    typeof primaryTle.line2 !== 'string'
+  ) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: "Primary TLE 'line1' and 'line2' must be non-empty strings.",
+      },
+    });
+  }
+
+  if (!secondaryTle || typeof secondaryTle !== 'object') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: "Field 'secondaryTle' is required and must contain 'line1' and 'line2'.",
+      },
+    });
+  }
+
+  if (
+    !secondaryTle.line1 ||
+    !secondaryTle.line2 ||
+    typeof secondaryTle.line1 !== 'string' ||
+    typeof secondaryTle.line2 !== 'string'
+  ) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: "Secondary TLE 'line1' and 'line2' must be non-empty strings.",
+      },
+    });
+  }
+
+  if (!nominalTca || typeof nominalTca !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: "Field 'nominalTca' is required and must be an ISO-8601 date string.",
+      },
+    });
+  }
+
+  const parsedDate = new Date(nominalTca);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: `Field 'nominalTca' contains an invalid date string: "${nominalTca}".`,
+      },
+    });
+  }
+
+  if (searchWindowMinutes !== undefined) {
+    const sw = Number(searchWindowMinutes);
+    if (Number.isNaN(sw) || sw < 1 || sw > 60) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: "'searchWindowMinutes' must be a number between 1 and 60.",
+        },
+      });
+    }
+  }
+
+  if (stepSeconds !== undefined) {
+    const ss = Number(stepSeconds);
+    if (Number.isNaN(ss) || ss < 1 || ss > 30) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: "'stepSeconds' must be a number between 1 and 30.",
+        },
+      });
+    }
+  }
+
+  if (eventId !== undefined && eventId !== null) {
+    if (typeof eventId !== 'string' || !UUID_REGEX.test(eventId)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `Field 'eventId' must be a valid UUID. Received: "${eventId}".`,
+        },
+      });
+    }
+  }
+
+  req.validatedPropagation = {
+    primaryTle: {
+      line1: primaryTle.line1.trim(),
+      line2: primaryTle.line2.trim(),
+    },
+    secondaryTle: {
+      line1: secondaryTle.line1.trim(),
+      line2: secondaryTle.line2.trim(),
+    },
+    nominalTca: parsedDate.toISOString(),
+    searchWindowMinutes: searchWindowMinutes ? Number(searchWindowMinutes) : 10,
+    stepSeconds: stepSeconds ? Number(stepSeconds) : 5,
+    eventId: eventId || null,
+  };
+
+  next();
+}

@@ -44,6 +44,7 @@ export async function resetTestDatabase(connectionString = config.databaseUrl) {
   assertSafeTestEnvironment(connectionString);
 
   await query('TRUNCATE audit_ledger CASCADE;');
+  await query('DELETE FROM orbital_screenings;');
   await query('DELETE FROM event_reviews;');
   await query('DELETE FROM event_assessments;');
   await query('DELETE FROM correlation_decisions;');

@@ -190,4 +190,23 @@ export const api = {
   async verifyAudit() {
     return request('/api/v1/audit/verify');
   },
+
+  /**
+   * Calculates SGP4 orbital encounter estimation.
+   * @param {object} body
+   */
+  async computePropagation(body) {
+    return request('/api/v1/propagation/estimate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  /**
+   * Retrieves historical orbital propagation screenings for an event.
+   * @param {string} id
+   */
+  async getEventPropagation(id) {
+    return request(`/api/v1/events/${id}/propagation`);
+  },
 };

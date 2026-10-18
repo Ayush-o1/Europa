@@ -16,7 +16,60 @@ import {
   formatScientific,
   getUrgencyBadgeClass,
   getReviewBadgeClass,
+  computeTleChecksum,
 } from '../utils.js';
+
+function renderSgp4ScreeningsList(screenings, event) {
+  if (!screenings || screenings.length === 0) {
+    return `
+      <div style="text-align: center; padding: var(--space-4); background-color: var(--bg-surface-2); border-radius: var(--radius-xs); color: var(--text-muted); font-size: var(--text-xs);">
+        No SGP4 encounter estimation has been computed for this pair yet. Click "Load Sample TLEs" and compute an experimental screening above.
+      </div>
+    `;
+  }
+
+  return screenings
+    .map(
+      s => `
+      <div style="background-color: var(--bg-surface-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-xs); padding: var(--space-3); margin-bottom: var(--space-2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+          <div style="display: flex; align-items: center; gap: var(--space-2);">
+            <span class="badge badge-brand" style="font-size: 10px;">SGP4 SCREENING</span>
+            <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">${formatUtc(s.createdAt)}</span>
+          </div>
+          <span style="font-size: 11px; font-family: var(--font-mono); color: ${s.primaryTleAgeHours > 72 || s.secondaryTleAgeHours > 72 ? 'var(--color-warning)' : 'var(--color-success)'};">
+            ${s.primaryTleAgeHours > 72 || s.secondaryTleAgeHours > 72 ? '⚠️ Stale TLE (>72h)' : 'Fresh Elements'}
+          </span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-2); font-size: var(--text-xs);">
+          <div>
+            <span style="color: var(--text-muted); font-size: 10px; display: block;">Refined TCA (UTC):</span>
+            <strong style="font-family: var(--font-mono);">${formatUtc(s.estimatedTca)}</strong>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); font-size: 10px; display: block;">SGP4 Miss Distance:</span>
+            <strong style="font-family: var(--font-mono); color: ${s.estimatedMissDistanceKm < 5.0 ? 'var(--color-critical)' : 'var(--text-primary)'};">
+              ${formatDistance(s.estimatedMissDistanceKm)}
+            </strong>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); font-size: 10px; display: block;">SOCRATES Reported:</span>
+            <span style="font-family: var(--font-mono); color: var(--text-secondary);">${formatDistance(event.latest_range_km)}</span>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); font-size: 10px; display: block;">Relative Speed:</span>
+            <span style="font-family: var(--font-mono);">${formatVelocity(s.estimatedRelativeSpeedKmS)}</span>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); font-size: 10px; display: block;">Element Age (P / S):</span>
+            <span style="font-family: var(--font-mono);">${s.primaryTleAgeHours}h / ${s.secondaryTleAgeHours}h</span>
+          </div>
+        </div>
+      </div>
+    `,
+    )
+    .join('');
+}
 
 export async function renderEventDetails(container) {
   const eventId = state.get('selectedEventId');
@@ -82,18 +135,20 @@ async function loadEventDetailsData(container, eventId) {
   if (!contentEl) return;
 
   try {
-    // Parallel fetch of event details, observation history, assessments, and audit trail
-    const [eventRes, historyRes, assessmentsRes, auditRes] = await Promise.all([
+    // Parallel fetch of event details, observation history, assessments, audit trail, and SGP4 screenings
+    const [eventRes, historyRes, assessmentsRes, auditRes, propagationRes] = await Promise.all([
       api.getEvent(eventId),
       api.getEventHistory(eventId),
       api.getEventAssessments(eventId),
       api.getEventAudit(eventId, { limit: 50 }),
+      api.getEventPropagation(eventId).catch(() => ({ data: { screenings: [] } })),
     ]);
 
     const { event, latestObservation, latestAssessment, latestReview } = eventRes.data;
     const history = historyRes.data || [];
     const assessments = assessmentsRes.data || [];
     const auditRecords = auditRes.data || [];
+    const screenings = propagationRes?.data?.screenings || [];
 
     // Update view title
     const titleEl = container.querySelector('#details-event-title');
@@ -248,6 +303,73 @@ async function loadEventDetailsData(container, eventId) {
               `,
                 )
                 .join('')}
+            </div>
+          </div>
+
+          <!-- Experimental Orbital Screening (SGP4) Card -->
+          <div class="card" id="card-sgp4-screening">
+            <div class="card-header">
+              <div style="display: flex; align-items: center; gap: var(--space-2);">
+                <h2 class="card-title">Experimental Orbital Screening (SGP4)</h2>
+                <span class="badge badge-warning" style="font-size: 10px;">EXPERIMENTAL</span>
+              </div>
+              <span style="font-size: var(--text-xs); color: var(--text-muted); font-family: var(--font-mono);">
+                satellite.js v7.1.0 (Vallado SGP4)
+              </span>
+            </div>
+
+            <div style="background-color: var(--bg-surface-2); border-left: 3px solid var(--color-warning); padding: var(--space-3); border-radius: var(--radius-xs); margin-bottom: var(--space-4); font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5;">
+              <strong>Scientific Limitation Notice:</strong> SGP4 computes mean Keplerian trajectories under simplified zonal harmonics (J2, J3, J4) and atmospheric drag. Standard TLEs lack covariance matrices and cannot calculate authoritative collision probabilities (P_c). Estimated miss distances are experimental screening aids only. SOCRATES MAX_PROB is an upper-bound screening metric.
+            </div>
+
+            <!-- Form for Running SGP4 Screening -->
+            <form id="sgp4-screening-form" style="display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4);">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; color: var(--text-muted);">
+                  Two-Line Element (TLE) Inputs
+                </span>
+                <button type="button" id="btn-load-sample-tles" class="btn btn-secondary btn-sm" style="font-size: 11px;">
+                  Load Sample TLEs
+                </button>
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 2px;">
+                  Primary Object (NORAD ${event.primary_object_id}) TLE:
+                </label>
+                <input type="text" id="sgp4-primary-line1" class="form-input" style="font-family: var(--font-mono); font-size: 11px; margin-bottom: 4px;" placeholder="Line 1: 1 ${event.primary_object_id}U ..." />
+                <input type="text" id="sgp4-primary-line2" class="form-input" style="font-family: var(--font-mono); font-size: 11px;" placeholder="Line 2: 2 ${event.primary_object_id} ..." />
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 2px;">
+                  Secondary Object (NORAD ${event.secondary_object_id}) TLE:
+                </label>
+                <input type="text" id="sgp4-secondary-line1" class="form-input" style="font-family: var(--font-mono); font-size: 11px; margin-bottom: 4px;" placeholder="Line 1: 1 ${event.secondary_object_id}U ..." />
+                <input type="text" id="sgp4-secondary-line2" class="form-input" style="font-family: var(--font-mono); font-size: 11px;" placeholder="Line 2: 2 ${event.secondary_object_id} ..." />
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+                <div>
+                  <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 2px;">Nominal TCA (UTC):</label>
+                  <input type="text" id="sgp4-nominal-tca" class="form-input" style="font-family: var(--font-mono); font-size: 11px;" value="${event.latest_tca ? new Date(event.latest_tca).toISOString() : new Date().toISOString()}" />
+                </div>
+                <div>
+                  <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 2px;">Search Window (+/- min):</label>
+                  <input type="number" id="sgp4-window-minutes" class="form-input" style="font-family: var(--font-mono); font-size: 11px;" value="10" min="1" max="60" />
+                </div>
+              </div>
+
+              <div id="sgp4-feedback" style="display: none; font-size: var(--text-xs); padding: var(--space-2); border-radius: var(--radius-xs);"></div>
+
+              <button type="submit" id="btn-compute-sgp4" class="btn btn-primary" style="margin-top: var(--space-2);">
+                Compute SGP4 Encounter Estimate
+              </button>
+            </form>
+
+            <!-- Screening Results Container -->
+            <div id="sgp4-results-container">
+              ${renderSgp4ScreeningsList(screenings, event)}
             </div>
           </div>
 
@@ -577,6 +699,134 @@ async function loadEventDetailsData(container, eventId) {
         if (err.status === 401 || err.status === 403) {
           contentEl.querySelector('#operator-key-prompt-wrapper').style.display = 'block';
           state.clearOperatorAuth();
+        }
+      }
+    });
+
+    // SGP4 Screening Form Handling (Phase 8)
+    const sgp4Form = contentEl.querySelector('#sgp4-screening-form');
+    const btnLoadTle = contentEl.querySelector('#btn-load-sample-tles');
+    const sgp4Feedback = contentEl.querySelector('#sgp4-feedback');
+    const resultsContainer = contentEl.querySelector('#sgp4-results-container');
+    const p1Input = contentEl.querySelector('#sgp4-primary-line1');
+    const p2Input = contentEl.querySelector('#sgp4-primary-line2');
+    const s1Input = contentEl.querySelector('#sgp4-secondary-line1');
+    const s2Input = contentEl.querySelector('#sgp4-secondary-line2');
+    const tcaInput = contentEl.querySelector('#sgp4-nominal-tca');
+    const winInput = contentEl.querySelector('#sgp4-window-minutes');
+    const btnComputeSgp4 = contentEl.querySelector('#btn-compute-sgp4');
+
+    btnLoadTle?.addEventListener('click', () => {
+      const pIdStr = String(event.primary_object_id).padStart(5, '0');
+      const sIdStr = String(event.secondary_object_id).padStart(5, '0');
+
+      const p1Pref = `1 ${pIdStr}U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  900`;
+      const p1 = p1Pref + computeTleChecksum(p1Pref + '0');
+      const p2Pref = `2 ${pIdStr}  51.6400 208.9163 0004780  69.9862  25.2906 15.4981501643190`;
+      const p2 = p2Pref + computeTleChecksum(p2Pref + '0');
+
+      const s1Pref = `1 ${sIdStr}U 93036SX  24001.50000000  .00001234  00000-0  56789-4 0  900`;
+      const s1 = s1Pref + computeTleChecksum(s1Pref + '0');
+      const s2Pref = `2 ${sIdStr}  74.0400 210.1234 0021500 120.4500  45.6700 14.8500000021345`;
+      const s2 = s2Pref + computeTleChecksum(s2Pref + '0');
+
+      if (p1Input) p1Input.value = p1;
+      if (p2Input) p2Input.value = p2;
+      if (s1Input) s1Input.value = s1;
+      if (s2Input) s2Input.value = s2;
+      showToast('Sample TLE elements loaded.', 'info');
+    });
+
+    sgp4Form?.addEventListener('submit', async e => {
+      e.preventDefault();
+      if (sgp4Feedback) sgp4Feedback.style.display = 'none';
+
+      const line1P = p1Input ? p1Input.value.trim() : '';
+      const line2P = p2Input ? p2Input.value.trim() : '';
+      const line1S = s1Input ? s1Input.value.trim() : '';
+      const line2S = s2Input ? s2Input.value.trim() : '';
+      const nomTca = tcaInput ? tcaInput.value.trim() : '';
+      const win = winInput ? parseInt(winInput.value, 10) || 10 : 10;
+
+      if (!line1P || !line2P || !line1S || !line2S) {
+        if (sgp4Feedback) {
+          sgp4Feedback.style.display = 'block';
+          sgp4Feedback.style.backgroundColor = 'var(--color-critical-bg)';
+          sgp4Feedback.style.color = 'var(--color-critical)';
+          sgp4Feedback.textContent = 'Both Primary and Secondary TLE lines (1 and 2) are required.';
+        }
+        return;
+      }
+
+      if (btnComputeSgp4) {
+        btnComputeSgp4.disabled = true;
+        btnComputeSgp4.textContent = 'Computing SGP4 trajectory...';
+      }
+
+      try {
+        const res = await api.computePropagation({
+          primaryTle: { line1: line1P, line2: line2P },
+          secondaryTle: { line1: line1S, line2: line2S },
+          nominalTca: nomTca,
+          searchWindowMinutes: win,
+          eventId: event.id,
+        });
+
+        const est = res.data;
+        showToast('SGP4 orbital encounter screening computed successfully.', 'success');
+
+        if (resultsContainer) {
+          resultsContainer.innerHTML =
+            `
+            <div style="background-color: var(--bg-surface-2); border: 1px solid var(--color-brand); border-radius: var(--radius-xs); padding: var(--space-3); margin-bottom: var(--space-3);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+                <div style="display: flex; align-items: center; gap: var(--space-2);">
+                  <span class="badge badge-success" style="font-size: 10px;">LATEST SCREENING RESULT</span>
+                  <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">${formatUtc(est.estimatedTca)}</span>
+                </div>
+                <span style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted);">
+                  Δt from TCA: ${est.tcaDeltaSeconds > 0 ? '+' : ''}${est.tcaDeltaSeconds}s
+                </span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-2); font-size: var(--text-xs);">
+                <div>
+                  <span style="color: var(--text-muted); font-size: 10px; display: block;">SGP4 Miss Distance:</span>
+                  <strong style="font-family: var(--font-mono); font-size: var(--text-sm); color: ${est.estimatedMissDistanceKm < 5.0 ? 'var(--color-critical)' : 'var(--text-primary)'};">
+                    ${formatDistance(est.estimatedMissDistanceKm)}
+                  </strong>
+                </div>
+                <div>
+                  <span style="color: var(--text-muted); font-size: 10px; display: block;">SOCRATES Range:</span>
+                  <span style="font-family: var(--font-mono);">${formatDistance(event.latest_range_km)}</span>
+                </div>
+                <div>
+                  <span style="color: var(--text-muted); font-size: 10px; display: block;">Relative Velocity:</span>
+                  <span style="font-family: var(--font-mono);">${formatVelocity(est.estimatedRelativeSpeedKmS)}</span>
+                </div>
+                <div>
+                  <span style="color: var(--text-muted); font-size: 10px; display: block;">Primary TLE Age:</span>
+                  <span style="font-family: var(--font-mono);">${est.primaryObject.tleAgeHours}h</span>
+                </div>
+                <div>
+                  <span style="color: var(--text-muted); font-size: 10px; display: block;">Secondary TLE Age:</span>
+                  <span style="font-family: var(--font-mono);">${est.secondaryObject.tleAgeHours}h</span>
+                </div>
+              </div>
+              ${est.persisted ? `<div style="margin-top: var(--space-2); font-size: 10px; font-family: var(--font-mono); color: var(--color-success);">✓ Persisted to orbital_screenings & appended to cryptographic audit ledger.</div>` : ''}
+            </div>
+          ` + resultsContainer.innerHTML;
+        }
+      } catch (err) {
+        if (sgp4Feedback) {
+          sgp4Feedback.style.display = 'block';
+          sgp4Feedback.style.backgroundColor = 'var(--color-critical-bg)';
+          sgp4Feedback.style.color = 'var(--color-critical)';
+          sgp4Feedback.textContent = `Screening failed: ${err.message}`;
+        }
+      } finally {
+        if (btnComputeSgp4) {
+          btnComputeSgp4.disabled = false;
+          btnComputeSgp4.textContent = 'Compute SGP4 Encounter Estimate';
         }
       }
     });
