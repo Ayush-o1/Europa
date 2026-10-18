@@ -12,6 +12,9 @@ node_modules/
 coverage/
 *.lcov
 .vitest/
+test-results/
+playwright-report/
+benchmarks/results/
 
 # Logs
 logs/

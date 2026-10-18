@@ -44,6 +44,7 @@ export function setupNavigation() {
 
   // React to operator auth state change
   state.subscribe('operatorApiKey', updateAuthBadge);
+  state.subscribe('operatorActorId', updateAuthBadge);
 
   function updateAuthBadge() {
     if (!authBadge) return;
@@ -128,6 +129,7 @@ export function openOperatorAuthModal() {
         className: 'btn-secondary',
         onClick: m => {
           state.clearOperatorAuth();
+          state.set('operatorActorId', 'operator');
           showToast('Operator key cleared from memory.', 'info');
           m.close();
         },
@@ -143,11 +145,12 @@ export function openOperatorAuthModal() {
           const actor = actorInput?.value ? actorInput.value.trim() : 'operator';
 
           if (key) {
-            state.set('operatorApiKey', key);
             state.set('operatorActorId', actor || 'operator');
+            state.set('operatorApiKey', key);
             showToast('Operator key stored in transient session memory.', 'success');
           } else {
             state.clearOperatorAuth();
+            state.set('operatorActorId', 'operator');
             showToast('Operator key removed.', 'info');
           }
           m.close();

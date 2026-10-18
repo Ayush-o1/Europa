@@ -490,6 +490,18 @@ async function loadEventDetailsData(container, eventId) {
       });
     }
 
+    // React to operator authentication changes
+    state.subscribe('operatorApiKey', key => {
+      const promptWrapper = contentEl.querySelector('#operator-key-prompt-wrapper');
+      const keyInput = contentEl.querySelector('#input-operator-key');
+      if (promptWrapper) {
+        promptWrapper.style.display = key ? 'none' : 'block';
+      }
+      if (keyInput && !key) {
+        keyInput.value = '';
+      }
+    });
+
     // Review form submission handler (Part 6E)
     const reviewForm = contentEl.querySelector('#review-action-form');
     reviewForm?.addEventListener('submit', async e => {

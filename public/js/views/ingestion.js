@@ -197,6 +197,9 @@ function setupUploadInteractions(container) {
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('screeningScope', scopeSelect?.value || 'LOCAL_FIXTURE');
+    if (selectedFile.lastModified) {
+      formData.append('capturedAt', new Date(selectedFile.lastModified).toISOString());
+    }
 
     try {
       const res = await api.uploadSnapshot(formData);

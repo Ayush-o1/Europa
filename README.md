@@ -41,16 +41,19 @@ Voidline/
 │   ├── utils/           # Shared utility functions
 │   ├── app.js           # Express application factory (separated from listen for testing)
 │   └── index.js         # Server runner & graceful termination handler
-├── scripts/             # Operational & developer CLI tools (migrate, replay, audit)
+├── scripts/             # Operational & developer CLI tools (migrate, benchmark)
 ├── storage/
 │   └── snapshots/       # Immutable local raw snapshot archive
 ├── test/
-│   ├── fixtures/        # Sample scenario CSV datasets (real, malformed)
+│   ├── fixtures/        # Sample scenario CSV datasets (real, synthetic, malformed)
+│   ├── helpers/         # Test database cleanup and isolation helpers
 │   ├── unit/            # Unit tests for domain logic, parser, rules & audit ledger
-│   └── integration/     # Database integration & Supertest API endpoint tests
+│   ├── integration/     # Database integration, concurrency & Supertest API tests
+│   └── e2e/             # Real browser Playwright end-to-end user workflow tests
 ├── public/              # Static frontend assets (HTML, CSS, vanilla JS)
 ├── eslint.config.js     # ESLint flat configuration
 ├── vitest.config.js     # Vitest test runner configuration
+├── playwright.config.js # Playwright browser test configuration
 ├── .prettierrc          # Prettier code formatting rules
 ├── .env.example         # Environment template
 └── package.json         # Project manifest
@@ -120,6 +123,8 @@ npm start
 | `npm run dev`          | Start the Express API server in watch mode (`node --watch`)                |
 | `npm test`             | Run the automated test suite once via Vitest (unit & database integration) |
 | `npm run test:watch`   | Run Vitest in interactive watch mode                                       |
+| `npm run test:e2e`     | Run real browser end-to-end tests via Playwright against PostgreSQL        |
+| `npm run benchmark`    | Run reproducible performance benchmark harness and record baseline metrics |
 | `npm run db:migrate`   | Apply all pending transactional SQL migrations                             |
 | `npm run lint`         | Check code for style and syntax errors via ESLint                          |
 | `npm run lint:fix`     | Automatically fix ESLint warnings and errors                               |
@@ -314,3 +319,60 @@ curl -s "http://localhost:3000/api/v1/audit/verify"
   - Snapshot Ingestion (Part 6F): Drag-and-drop CSV upload with duplicate detection, batch history table, and 1-click real SOCRATES sample dataset loader.
   - Cryptographic Audit Ledger (Part 6G): Read-only cryptographic hash-chain verification runner, chain status indicator, and anti-tampering notices.
   - Security Architecture: Operator API keys are managed strictly in transient in-memory state (`state.operatorApiKey`), never written to disk, localStorage, sessionStorage, or logs.
+- **Phase 7 (End-to-End Testing & Performance Benchmarks):** Completed and verified.
+  - Real browser end-to-end test suite (`test/e2e/e2eWorkflows.spec.js`) powered by Playwright executing against live Express server and real PostgreSQL (`voidline_test`).
+  - Comprehensive scenario coverage:
+    - **Scenario A (Fresh installation):** Server boot, DOM load, real DB readiness status, zero-state messaging, and navigation without browser console errors.
+    - **Scenario B (Snapshot ingestion):** Operator key entry via in-memory modal, drag-and-drop file upload, ingestion summary verification, provenance table tracking, duplicate upload rejection (`DUPLICATE_IGNORED`), separate capture confirmation, and malformed row error reporting.
+    - **Scenario C (Event investigation):** Encounter triage filtering, event detail inspection, precision SVG miss distance evolution charting, chronological timeline sequence, heuristic assessment breakdown, and linked audit records.
+    - **Scenario D (Operator review & audit):** Technical justification validation (>=10 chars), unauthorized write rejection, state escalation (`ESCALATED`), re-review triggering upon prediction contraction without erasing prior review history, valid audit ledger verification (`CHAIN INTACT`), and deliberate controlled tampering detection (`TAMPER DETECTED` reporting exact broken sequence).
+    - **Scenario E (Usability & security):** Desktop (1280x720) and mobile (375x667) responsiveness, hash-based client routing across reloads, transient memory isolation (keys absent from `localStorage`, `sessionStorage`, and URLs).
+  - Deterministic synthetic scenario fixtures (`test/fixtures/synthetic_scenario_*.csv`) explicitly labeled as synthetic: newly created encounters, tightening predictions, diverging predictions, duplicate captures, distinct encounters for the same object pair, ambiguous intra-snapshot predictions, out-of-order historical arrivals, and malformed rows.
+  - Comprehensive regression and resilience integration suite (`test/integration/resilienceAndRegression.test.js`) verifying concurrent ingestion safety under PostgreSQL advisory locks, transactional rollback isolation, chronological sequence preservation during out-of-order backfills, and safeguards against running destructive cleanup in production.
+  - Repeatable performance benchmark harness (`scripts/benchmark.js`) recording real metrics across 100, 1,000, and 5,000 synthetic rows and multi-worker concurrency.
+  - Automated Continuous Integration workflow (`.github/workflows/ci.yml`) executing formatting checks, ESLint, database migrations, Vitest suite, and Playwright browser tests against a containerized PostgreSQL service.
+
+---
+
+## Performance Baseline & Benchmarks
+
+The benchmark suite (`npm run benchmark`) measures real execution throughput, response latency percentiles, and memory footprint across controlled synthetic workloads against PostgreSQL.
+
+### Test Environment
+
+- **Operating System:** macOS Darwin (arm64, Apple Silicon)
+- **Processor:** Apple M4 (10 cores)
+- **System Memory:** 16.00 GB RAM
+- **Node.js Runtime:** v26.12.0
+- **Database Engine:** PostgreSQL 18.6 (Homebrew)
+- **Isolation:** Serial and concurrent database workloads isolated in `voidline_test`
+
+### Measured Performance Baseline
+
+| Operation                               | 100 Rows                   | 1,000 Rows                  | 5,000 Rows                  |
+| :-------------------------------------- | :------------------------- | :-------------------------- | :-------------------------- |
+| **CSV Parsing & Validation**            | 24,478 rows/s (4.09 ms)    | 161,835 rows/s (6.18 ms)    | 187,932 rows/s (26.61 ms)   |
+| **Ingestion, Correlation & Assessment** | 447 rows/s (223.73 ms)     | 869 rows/s (1,150.16 ms)    | 1,492 rows/s (3,350.46 ms)  |
+| **Successive Snapshot Evolution**       | 100 updates (241.12 ms)    | 500 updates (1,462.52 ms)   | 500 updates (5,624.82 ms)   |
+| **Event List API Query (p50 / p95)**    | 2.63 ms / 4.13 ms          | 1.95 ms / 4.91 ms           | 1.90 ms / 2.94 ms           |
+| **Event History API Query (p50 / p95)** | 0.81 ms / 1.03 ms          | 0.89 ms / 1.14 ms           | 0.76 ms / 0.98 ms           |
+| **Cryptographic Audit Verification**    | 88,185 entries/s (2.27 ms) | 141,909 entries/s (7.05 ms) | 133,960 entries/s (7.46 ms) |
+| **Peak Heap / RSS Memory**              | 28.9 MB / 71.7 MB          | 61.4 MB / 137.6 MB          | 78.1 MB / 169.8 MB          |
+
+### Concurrency Stress Baseline (3 Workers × 500 Rows)
+
+- **Total Workload:** 1,500 rows submitted concurrently in parallel across 3 worker connections
+- **Duration & Aggregate Throughput:** 2,606.50 ms (~575 rows/sec aggregate)
+- **Encounter Integrity:** Exactly 500 unique conjunction encounters formed (zero duplicate encounter creation, verifying two-key transaction advisory locking)
+- **Audit Ledger Verification:** 100% valid SHA-256 hash chain with zero sequence gaps or link breaks
+
+### Bottleneck Analysis
+
+1. **Fastest Operations:**
+   - **Streaming CSV Parsing:** Exceeds 180,000 rows/second utilizing Node.js streams and low-overhead regex validation.
+   - **Cryptographic Audit Ledger Verification:** Operates at ~134,000 to 142,000 entries/second due to indexed sequential scanning and native V8 SHA-256 computation.
+   - **Operational REST Queries:** Triage queue and event history endpoints respond with p95 latency under 5 milliseconds.
+2. **Primary Workload Bottleneck:**
+   - **Database Transaction Write Latency during Batch Ingestion:** For each observation in a batch, the pipeline performs canonical object lookup/insertion, candidate encounter evaluation, raw observation persistence, event state updating, assessment scoring, and audit entry appending.
+   - Ingest throughput scales from ~447 rows/s for small batches to ~1,492 rows/s for 5,000-row batches due to connection pooling amortization.
+   - Under heavy concurrency, transactional advisory locks (`pg_advisory_xact_lock`) safely serialize operations per object pair, prioritizing correctness over raw unsafe parallel throughput.

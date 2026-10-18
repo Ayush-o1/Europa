@@ -9,6 +9,8 @@
     "dev": "node --watch src/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "NODE_ENV=test playwright test",
+    "benchmark": "NODE_ENV=test node scripts/benchmark.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -33,6 +35,7 @@
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "@types/pg": "^8.23.1",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
