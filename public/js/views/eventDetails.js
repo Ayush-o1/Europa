@@ -1,0 +1,584 @@
+/**
+ * @fileoverview Parts 6C, 6D, 6E: Conjunction Event Details, Assessment Explanation,
+ * Chronological Prediction Evolution, and Operator Review Workflow.
+ */
+
+import { api } from '../apiClient.js';
+import { state } from '../state.js';
+import { renderEvolutionChart } from '../components/chart.js';
+import { showToast } from '../components/toast.js';
+import {
+  escapeHtml,
+  formatUtc,
+  formatRelativeTime,
+  formatDistance,
+  formatVelocity,
+  formatScientific,
+  getUrgencyBadgeClass,
+  getReviewBadgeClass,
+} from '../utils.js';
+
+export async function renderEventDetails(container) {
+  const eventId = state.get('selectedEventId');
+
+  if (!eventId) {
+    container.innerHTML = `
+      <div class="view-header">
+        <div class="view-title-group">
+          <h1>Event Details</h1>
+          <p class="view-description">No encounter event selected.</p>
+        </div>
+      </div>
+      <div class="card state-box">
+        <div class="state-icon">🛰️</div>
+        <h2 class="state-title">Select an Encounter Event</h2>
+        <p class="state-desc">Please choose an event from the Triage Queue to inspect its prediction history.</p>
+        <button id="btn-back-to-queue" class="btn btn-primary btn-sm">Open Triage Queue →</button>
+      </div>
+    `;
+    container.querySelector('#btn-back-to-queue')?.addEventListener('click', () => {
+      state.set('currentView', 'events');
+    });
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1);">
+          <button id="btn-back-events" class="btn btn-secondary btn-sm">← Back to Queue</button>
+          <span style="color: var(--text-muted); font-size: var(--text-sm);">/ Event Details</span>
+        </div>
+        <h1 id="details-event-title">Loading Encounter Event...</h1>
+        <p class="view-description">
+          Detailed observation evolution, explainable assessment heuristics, and auditable operational review decisions.
+        </p>
+      </div>
+      <div class="header-action-group">
+        <button id="btn-refresh-event" class="btn btn-secondary btn-sm">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div id="event-details-content">
+      <div class="state-box">
+        <span class="skeleton" style="width: 100%; height: 260px;"></span>
+      </div>
+    </div>
+  `;
+
+  container.querySelector('#btn-back-events')?.addEventListener('click', () => {
+    state.set('currentView', 'events');
+  });
+
+  container.querySelector('#btn-refresh-event')?.addEventListener('click', () => {
+    loadEventDetailsData(container, eventId);
+  });
+
+  await loadEventDetailsData(container, eventId);
+}
+
+async function loadEventDetailsData(container, eventId) {
+  const contentEl = container.querySelector('#event-details-content');
+  if (!contentEl) return;
+
+  try {
+    // Parallel fetch of event details, observation history, assessments, and audit trail
+    const [eventRes, historyRes, assessmentsRes, auditRes] = await Promise.all([
+      api.getEvent(eventId),
+      api.getEventHistory(eventId),
+      api.getEventAssessments(eventId),
+      api.getEventAudit(eventId, { limit: 50 }),
+    ]);
+
+    const { event, latestObservation, latestAssessment, latestReview } = eventRes.data;
+    const history = historyRes.data || [];
+    const assessments = assessmentsRes.data || [];
+    const auditRecords = auditRes.data || [];
+
+    // Update view title
+    const titleEl = container.querySelector('#details-event-title');
+    if (titleEl) {
+      titleEl.textContent = `${event.primary_object_name} vs ${event.secondary_object_name}`;
+    }
+
+    const isReReviewNeeded = event.review_status === 'REQUIRES_RE_REVIEW';
+
+    contentEl.innerHTML = `
+      <!-- Object Pair Encounter Banner -->
+      <div class="encounter-banner" style="margin-bottom: var(--space-6);">
+        <div class="objects-pair-display">
+          <div class="object-item">
+            <span class="object-norad">PRIMARY OBJECT (NORAD ${event.primary_object_id})</span>
+            <span class="object-name">
+              ${escapeHtml(event.primary_object_name)}
+              <span class="status-tag ${event.primary_operational_status === 'OPERATIONAL' ? 'active' : 'debris'}">${escapeHtml(event.primary_operational_status || 'UNKNOWN')}</span>
+            </span>
+          </div>
+
+          <div class="encounter-vs">VS</div>
+
+          <div class="object-item">
+            <span class="object-norad">SECONDARY OBJECT (NORAD ${event.secondary_object_id})</span>
+            <span class="object-name">
+              ${escapeHtml(event.secondary_object_name)}
+              <span class="status-tag ${event.secondary_operational_status === 'OPERATIONAL' ? 'active' : 'debris'}">${escapeHtml(event.secondary_operational_status || 'UNKNOWN')}</span>
+            </span>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;">
+          <span class="badge ${getUrgencyBadgeClass(event.urgency_level)}" style="font-size: var(--text-sm); padding: var(--space-1) var(--space-3);">
+            ${escapeHtml(event.urgency_level)} URGENCY
+          </span>
+          <span class="badge ${getReviewBadgeClass(event.review_status)}" style="font-size: var(--text-sm); padding: var(--space-1) var(--space-3);">
+            ${escapeHtml(event.review_status)}
+          </span>
+          <span class="badge badge-neutral" style="font-size: var(--text-sm); padding: var(--space-1) var(--space-3);">
+            ${escapeHtml(event.lifecycle_state)}
+          </span>
+        </div>
+      </div>
+
+      ${
+        isReReviewNeeded
+          ? `
+        <div class="card" style="border-left: 4px solid var(--color-critical); background-color: var(--color-critical-bg); margin-bottom: var(--space-6); padding: var(--space-4);">
+          <div style="display: flex; align-items: center; gap: var(--space-2); color: var(--color-critical); font-weight: 700; margin-bottom: var(--space-1);">
+            <span>⚠</span> FRESH OPERATOR REVIEW REQUIRED
+          </div>
+          <p style="font-size: var(--text-sm); color: var(--text-primary); margin: 0;">
+            A newer observation materially altered this encounter's prediction (urgency elevation, miss distance contraction >= 20%, or time to TCA < 24h).
+            A justified operational decision is required.
+          </p>
+        </div>
+      `
+          : ''
+      }
+
+      <!-- Encounter Metric Highlights -->
+      <div class="metrics-grid" style="margin-bottom: var(--space-6);">
+        <div class="metric-card">
+          <span class="metric-label">Predicted TCA (UTC)</span>
+          <span class="metric-value" style="font-size: var(--text-lg);">${formatUtc(event.latest_tca)}</span>
+          <span class="metric-subtext">${formatRelativeTime(event.latest_tca)} | Initial: ${formatUtc(event.initial_tca)}</span>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Current Miss Distance</span>
+          <span class="metric-value" style="color: ${parseFloat(event.latest_range_km) < 1.0 ? 'var(--color-critical)' : 'var(--text-primary)'};">
+            ${formatDistance(event.latest_range_km)}
+          </span>
+          <span class="metric-subtext">Minimum predicted: ${formatDistance(event.min_predicted_range_km)}</span>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Observation History</span>
+          <span class="metric-value">${event.observation_count}</span>
+          <span class="metric-subtext">Correlated snapshots across time</span>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Tracking Continuity</span>
+          <span class="metric-value" style="font-size: var(--text-lg);">${escapeHtml(event.tracking_state)}</span>
+          <span class="metric-subtext">Pair key: ${escapeHtml(event.canonical_pair_key)}</span>
+        </div>
+      </div>
+
+      <!-- Main Layout: 2 Columns -->
+      <div class="event-details-layout">
+        <!-- Left Column: Chart, Observations Timeline, Historical Assessments -->
+        <div class="details-main-column">
+          <!-- Prediction Evolution Chart (Part 6C) -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Miss Distance Evolution (km)</h2>
+              <span style="font-size: var(--text-xs); color: var(--text-muted); font-family: var(--font-mono);">
+                ${history.length} snapshots correlated
+              </span>
+            </div>
+            ${renderEvolutionChart(history)}
+          </div>
+
+          <!-- Chronological Observation Sequence (Part 6C) -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Chronological Observation Timeline</h2>
+              <span style="font-size: var(--text-xs); color: var(--text-muted);">Snapshot Chronology (captured_at ASC)</span>
+            </div>
+            <div class="timeline">
+              ${history
+                .map(
+                  (obs, idx) => `
+                <div class="timeline-item">
+                  <div class="timeline-marker ${idx === history.length - 1 ? 'latest' : ''}">
+                    #${obs.chronological_sequence || idx + 1}
+                  </div>
+                  <div class="timeline-content">
+                    <div class="timeline-header">
+                      <span class="timeline-timestamp">Snapshot: ${formatUtc(obs.captured_at)}</span>
+                      <span class="badge ${obs.is_unchanged_confirmation ? 'badge-neutral' : 'badge-brand'}">
+                        ${obs.is_unchanged_confirmation ? 'Unchanged Confirmation' : 'Prediction Update'}
+                      </span>
+                    </div>
+                    <div class="timeline-grid">
+                      <div>
+                        <span class="timeline-metric-label">Predicted TCA:</span>
+                        <span class="timeline-metric-val">${formatUtc(obs.tca)}</span>
+                      </div>
+                      <div>
+                        <span class="timeline-metric-label">Miss Distance:</span>
+                        <span class="timeline-metric-val" style="color: ${parseFloat(obs.tca_range_km) < 1.0 ? 'var(--color-critical)' : 'var(--text-primary)'};">
+                          ${formatDistance(obs.tca_range_km)}
+                        </span>
+                      </div>
+                      <div>
+                        <span class="timeline-metric-label">Relative Velocity:</span>
+                        <span class="timeline-metric-val">${formatVelocity(obs.relative_speed_kms)}</span>
+                      </div>
+                      <div>
+                        <span class="timeline-metric-label">Screening Max Prob:</span>
+                        <span class="timeline-metric-val">${formatScientific(obs.max_prob)}</span>
+                      </div>
+                    </div>
+                    <div style="margin-top: var(--space-2); font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">
+                      Source: ${escapeHtml(obs.source_uri)} (${escapeHtml(obs.screening_scope)})
+                    </div>
+                  </div>
+                </div>
+              `,
+                )
+                .join('')}
+            </div>
+          </div>
+
+          <!-- Audit Ledger Records for this Event (Part 6C) -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Event Cryptographic Audit Trail</h2>
+              <span style="font-size: var(--text-xs); font-family: var(--font-mono); color: var(--text-muted);">
+                ${auditRecords.length} records verified
+              </span>
+            </div>
+            <div style="overflow-x: auto;">
+              <table class="data-table" style="font-size: var(--text-xs);">
+                <thead>
+                  <tr>
+                    <th>Seq #</th>
+                    <th>Action</th>
+                    <th>Actor</th>
+                    <th>Timestamp (UTC)</th>
+                    <th>SHA-256 Entry Hash</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${
+                    auditRecords.length > 0
+                      ? auditRecords
+                          .map(
+                            audit => `
+                      <tr>
+                        <td style="font-family: var(--font-mono); font-weight: bold;">#${audit.sequence_number}</td>
+                        <td><span class="badge badge-brand">${escapeHtml(audit.action_type)}</span></td>
+                        <td>${escapeHtml(audit.actor_type)}: <strong style="font-family: var(--font-mono);">${escapeHtml(audit.actor_id)}</strong></td>
+                        <td style="font-family: var(--font-mono);">${formatUtc(audit.created_at)}</td>
+                        <td style="font-family: var(--font-mono); color: var(--text-muted);" title="${audit.entry_hash}">
+                          ${audit.entry_hash.slice(0, 16)}...
+                        </td>
+                      </tr>
+                    `,
+                          )
+                          .join('')
+                      : `<tr><td colspan="5" class="state-desc" style="text-align: center; padding: var(--space-4);">No audit records found.</td></tr>`
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Assessment Explanation (Part 6D) & Review Workflow (Part 6E) -->
+        <div class="details-sidebar-column">
+          <!-- Assessment Explanation Card (Part 6D) -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Review-Priority Assessment</h2>
+              <span class="badge badge-neutral" style="font-size: 11px;">
+                ${latestAssessment ? escapeHtml(latestAssessment.rule_set_version) : 'v1.0.0-heuristic'}
+              </span>
+            </div>
+
+            ${
+              latestAssessment
+                ? `
+              <div class="assessment-score-banner">
+                <div class="score-display">
+                  <span class="score-num">${latestAssessment.assessment_score}</span>
+                  <span class="score-denom">/ 100 PTS</span>
+                </div>
+                <span class="badge ${getUrgencyBadgeClass(latestAssessment.urgency_level)}" style="font-size: var(--text-sm); padding: var(--space-1) var(--space-2-5);">
+                  ${escapeHtml(latestAssessment.urgency_level)}
+                </span>
+              </div>
+
+              <!-- Component Scores Breakdown -->
+              <div class="component-list">
+                <!-- Miss Distance Component (50%) -->
+                <div class="component-card">
+                  <div class="component-header">
+                    <span class="component-name">Miss Distance Weight</span>
+                    <span class="component-score">${latestAssessment.component_scores.missDistance?.score || 0} / 50</span>
+                  </div>
+                  <div class="component-bar-bg">
+                    <div class="component-bar-fill" style="width: ${((latestAssessment.component_scores.missDistance?.score || 0) / 50) * 100}%;"></div>
+                  </div>
+                  <p class="component-reason">${escapeHtml(latestAssessment.explanations.missDistance || 'Proximity evaluation')}</p>
+                </div>
+
+                <!-- Time to TCA Component (30%) -->
+                <div class="component-card">
+                  <div class="component-header">
+                    <span class="component-name">Time to TCA Weight</span>
+                    <span class="component-score">${latestAssessment.component_scores.timeToTca?.score || 0} / 30</span>
+                  </div>
+                  <div class="component-bar-bg">
+                    <div class="component-bar-fill" style="width: ${((latestAssessment.component_scores.timeToTca?.score || 0) / 30) * 100}%;"></div>
+                  </div>
+                  <p class="component-reason">${escapeHtml(latestAssessment.explanations.timeToTca || 'Encounter lead time')}</p>
+                </div>
+
+                <!-- Probability Metric Component (15%) -->
+                <div class="component-card">
+                  <div class="component-header">
+                    <span class="component-name">Screening Max Probability</span>
+                    <span class="component-score">${latestAssessment.component_scores.probability?.score || 0} / 15</span>
+                  </div>
+                  <div class="component-bar-bg">
+                    <div class="component-bar-fill" style="width: ${((latestAssessment.component_scores.probability?.score || 0) / 15) * 100}%;"></div>
+                  </div>
+                  <p class="component-reason">${escapeHtml(latestAssessment.explanations.probability || 'Upper-bound catalog metric')}</p>
+                </div>
+
+                <!-- Data Freshness Component (5%) -->
+                <div class="component-card">
+                  <div class="component-header">
+                    <span class="component-name">TLE Data Freshness</span>
+                    <span class="component-score">${latestAssessment.component_scores.dataFreshness?.score || 0} / 5</span>
+                  </div>
+                  <div class="component-bar-bg">
+                    <div class="component-bar-fill" style="width: ${((latestAssessment.component_scores.dataFreshness?.score || 0) / 5) * 100}%;"></div>
+                  </div>
+                  <p class="component-reason">${escapeHtml(latestAssessment.explanations.dataFreshness || 'Epoch propagation uncertainty')}</p>
+                </div>
+              </div>
+
+              <!-- Scientific Limitation Disclaimer -->
+              <div class="scientific-disclaimer" style="margin-top: var(--space-4);">
+                <span class="disclaimer-icon">ℹ</span>
+                <div>
+                  <strong>Scientific Methodology Notice:</strong> The score above is an explainable review-priority heuristic
+                  designed for operational triage, not an authoritative collision probability or maneuver recommendation.
+                  CelesTrak SOCRATES MAX_PROB values represent upper-bound screening indicators based on simplified error covariances.
+                </div>
+              </div>
+            `
+                : `<p class="state-desc">No assessment recorded for this encounter.</p>`
+            }
+          </div>
+
+          <!-- Operator Review Workflow (Part 6E) -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Operator Review Decision</h2>
+              <span class="badge ${getReviewBadgeClass(event.review_status)}">${escapeHtml(event.review_status)}</span>
+            </div>
+
+            <!-- Review Submission Form -->
+            <form id="review-action-form" style="display: flex; flex-direction: column; gap: var(--space-3);">
+              <div class="form-group">
+                <label class="form-label" for="review-action-select">Review Action</label>
+                <select id="review-action-select" class="select-input" required>
+                  <option value="ACKNOWLEDGE">ACKNOWLEDGE (Under Active Monitoring)</option>
+                  <option value="ESCALATE">ESCALATE (Escalate for Manoeuvre Screening)</option>
+                  <option value="DISMISS">DISMISS (No Conjunction Threat)</option>
+                  <option value="REQUEST_REASSESSMENT">REQUEST_REASSESSMENT (Re-evaluate Heuristics)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="review-justification">
+                  Technical Justification <span style="color: var(--color-critical);">*</span>
+                  <span id="char-counter" style="font-family: var(--font-mono); font-size: 11px; float: right; color: var(--text-muted);">
+                    0 / 10 min chars
+                  </span>
+                </label>
+                <textarea
+                  id="review-justification"
+                  class="textarea-input"
+                  rows="3"
+                  placeholder="Provide a mandatory technical justification (minimum 10 characters)..."
+                  required
+                ></textarea>
+              </div>
+
+              <!-- Operator Authentication Prompt if not already set -->
+              <div id="operator-key-prompt-wrapper" style="${state.hasOperatorAuth() ? 'display: none;' : ''}">
+                <div class="form-group">
+                  <label class="form-label" for="input-operator-key">Operator API Key</label>
+                  <input
+                    type="password"
+                    id="input-operator-key"
+                    class="input-text"
+                    placeholder="Enter operator API key..."
+                    value="${state.get('operatorApiKey') || ''}"
+                  />
+                  <span style="font-size: 11px; color: var(--text-muted);">
+                    Key is held in transient memory only; never stored on disk.
+                  </span>
+                </div>
+              </div>
+
+              <div id="review-form-feedback" style="display: none; font-size: var(--text-xs); padding: var(--space-2); border-radius: var(--radius-xs);"></div>
+
+              <button type="submit" id="btn-submit-review" class="btn btn-primary" style="width: 100%;">
+                Submit Operator Review Decision
+              </button>
+            </form>
+
+            <!-- Review History Stream -->
+            <div style="margin-top: var(--space-5); border-top: 1px solid var(--border-subtle); padding-top: var(--space-4);">
+              <h3 style="font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3);">
+                Historical Operator Decisions
+              </h3>
+              <div id="reviews-history-stream" style="display: flex; flex-direction: column; gap: var(--space-2);">
+                ${
+                  latestReview
+                    ? `
+                  <div style="background-color: var(--bg-surface-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: var(--space-3);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-1);">
+                      <span class="badge ${getReviewBadgeClass(latestReview.new_review_status)}">${escapeHtml(latestReview.action)}</span>
+                      <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">${formatUtc(latestReview.created_at)}</span>
+                    </div>
+                    <div style="font-size: var(--text-xs); color: var(--text-primary); margin-bottom: var(--space-1); font-style: italic;">
+                      "${escapeHtml(latestReview.justification)}"
+                    </div>
+                    <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">
+                      Operator: ${escapeHtml(latestReview.actor_id)} | ${escapeHtml(latestReview.previous_review_status)} → ${escapeHtml(latestReview.new_review_status)}
+                    </div>
+                  </div>
+                `
+                    : `<p class="state-desc" style="font-size: var(--text-xs);">No operator review recorded yet.</p>`
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Character counter for justification
+    const justEl = contentEl.querySelector('#review-justification');
+    const counterEl = contentEl.querySelector('#char-counter');
+    if (justEl && counterEl) {
+      justEl.addEventListener('input', () => {
+        const len = justEl.value.trim().length;
+        counterEl.textContent = `${len} / 10 min chars`;
+        if (len >= 10) {
+          counterEl.style.color = 'var(--color-success)';
+        } else {
+          counterEl.style.color = 'var(--color-critical)';
+        }
+      });
+    }
+
+    // Review form submission handler (Part 6E)
+    const reviewForm = contentEl.querySelector('#review-action-form');
+    reviewForm?.addEventListener('submit', async e => {
+      e.preventDefault();
+      const actionSelect = contentEl.querySelector('#review-action-select');
+      const feedbackEl = contentEl.querySelector('#review-form-feedback');
+      const submitBtn = contentEl.querySelector('#btn-submit-review');
+      const keyInput = contentEl.querySelector('#input-operator-key');
+
+      const action = actionSelect.value;
+      const justification = justEl.value.trim();
+
+      // Check justification length
+      if (justification.length < 10) {
+        if (feedbackEl) {
+          feedbackEl.style.display = 'block';
+          feedbackEl.style.backgroundColor = 'var(--color-critical-bg)';
+          feedbackEl.style.color = 'var(--color-critical)';
+          feedbackEl.textContent =
+            'A meaningful justification of at least 10 characters is required.';
+        }
+        return;
+      }
+
+      // If operator key is provided in input, save to transient in-memory state
+      if (keyInput && keyInput.value.trim()) {
+        state.set('operatorApiKey', keyInput.value.trim());
+      }
+
+      if (!state.hasOperatorAuth()) {
+        if (feedbackEl) {
+          feedbackEl.style.display = 'block';
+          feedbackEl.style.backgroundColor = 'var(--color-critical-bg)';
+          feedbackEl.style.color = 'var(--color-critical)';
+          feedbackEl.textContent =
+            'Operator API key required to record decisions. Please enter your key.';
+        }
+        contentEl.querySelector('#operator-key-prompt-wrapper').style.display = 'block';
+        return;
+      }
+
+      // Disable button during submission
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting decision...';
+      if (feedbackEl) feedbackEl.style.display = 'none';
+
+      try {
+        const reviewRes = await api.postReview(eventId, {
+          action,
+          justification,
+          actorId: state.get('operatorActorId') || 'flight-operator',
+        });
+
+        showToast(`Review action '${action}' recorded successfully!`, 'success');
+        // Clear textarea
+        justEl.value = '';
+        counterEl.textContent = '0 / 10 min chars';
+
+        // Reload data to reflect state change & audit append
+        await loadEventDetailsData(container, eventId);
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Operator Review Decision';
+
+        if (feedbackEl) {
+          feedbackEl.style.display = 'block';
+          feedbackEl.style.backgroundColor = 'var(--color-critical-bg)';
+          feedbackEl.style.color = 'var(--color-critical)';
+          feedbackEl.textContent = `Submission failed: ${err.message}`;
+        }
+
+        // If unauthorized, prompt for key
+        if (err.status === 401 || err.status === 403) {
+          contentEl.querySelector('#operator-key-prompt-wrapper').style.display = 'block';
+          state.clearOperatorAuth();
+        }
+      }
+    });
+  } catch (err) {
+    contentEl.innerHTML = `
+      <div class="card state-box">
+        <div class="state-icon">⚠</div>
+        <h2 class="state-title">Failed to Load Event Details</h2>
+        <p class="state-desc">${escapeHtml(err.message)}</p>
+        <button id="btn-retry-details" class="btn btn-primary btn-sm">Retry Request</button>
+      </div>
+    `;
+    contentEl.querySelector('#btn-retry-details')?.addEventListener('click', () => {
+      loadEventDetailsData(container, eventId);
+    });
+  }
+}

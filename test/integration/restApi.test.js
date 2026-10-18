@@ -585,4 +585,34 @@ describe('Phase 5 Integration: REST API & Operational Queries', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('8. Static Asset Serving & Web Interface Delivery', () => {
+    it('serves the main web application index.html at root GET /', async () => {
+      const res = await request(app).get('/');
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('text/html');
+      expect(res.text).toContain('<title>Voidline');
+      expect(res.text).toContain('id="view-content-root"');
+    });
+
+    it('serves CSS design tokens at GET /css/tokens.css', async () => {
+      const res = await request(app).get('/css/tokens.css');
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('text/css');
+      expect(res.text).toContain('--bg-app');
+    });
+
+    it('serves ES module client application at GET /js/app.js', async () => {
+      const res = await request(app).get('/js/app.js');
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('javascript');
+    });
+
+    it('supports SPA client-side routing fallback to index.html for non-API routes', async () => {
+      const res = await request(app).get('/events');
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('text/html');
+      expect(res.text).toContain('Voidline');
+    });
+  });
 });

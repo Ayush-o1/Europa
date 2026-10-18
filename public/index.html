@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Voidline - Satellite close-approach correlation, prediction evolution tracking, and auditable operational review workbench."
+    />
+    <title>Voidline — Satellite Conjunction & Assessment Workbench</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/layout.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="/css/views.css" />
+  </head>
+  <body>
+    <!-- Top Application Header -->
+    <header class="app-header">
+      <div class="brand-section">
+        <a href="#overview" class="brand-logo" aria-label="Voidline home">
+          <span class="brand-symbol">◈</span>
+          <span>Voidline</span>
+        </a>
+        <span class="brand-badge">SSA Workbench</span>
+      </div>
+
+      <!-- Main Navigation Tabs -->
+      <nav class="main-nav" role="tablist" aria-label="Workbench Views">
+        <button
+          class="nav-tab active"
+          data-view="overview"
+          role="tab"
+          aria-selected="true"
+          id="tab-overview"
+        >
+          Overview
+        </button>
+        <button class="nav-tab" data-view="events" role="tab" aria-selected="false" id="tab-events">
+          Triage Queue
+        </button>
+        <button
+          class="nav-tab"
+          data-view="ingestion"
+          role="tab"
+          aria-selected="false"
+          id="tab-ingestion"
+        >
+          Snapshot Ingestion
+        </button>
+        <button class="nav-tab" data-view="audit" role="tab" aria-selected="false" id="tab-audit">
+          Audit Ledger
+        </button>
+      </nav>
+
+      <!-- System Readiness and Operator Auth Controls -->
+      <div class="header-actions">
+        <div class="system-status" id="system-status-indicator" title="Database Connection Status">
+          <span class="status-dot" id="system-status-dot"></span>
+          <span id="system-status-text">Checking...</span>
+        </div>
+
+        <button
+          id="operator-auth-badge"
+          class="operator-auth-badge"
+          title="Manage in-memory operator authentication"
+        >
+          <span class="status-dot" style="background-color: var(--text-muted)"></span>
+          <span>Operator Auth: Set Key</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="app-main" id="main-content">
+      <div id="view-content-root" class="view-root">
+        <!-- Views are dynamically rendered here -->
+      </div>
+    </main>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Application Script (ES Module) -->
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>
