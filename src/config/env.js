@@ -46,6 +46,37 @@ export function loadConfig(env = process.env) {
   const defaultDevDb = `postgresql://${defaultUser}@localhost:5432/europa_dev`;
   const defaultTestDb = `postgresql://${defaultUser}@localhost:5432/europa_test`;
 
+  const isProduction = nodeEnv === 'production';
+
+  // Production fail-closed security guards: disallow default credentials or fallback databases
+  if (isProduction) {
+    if (!env.DATABASE_URL || env.DATABASE_URL.trim() === '') {
+      throw new Error(
+        '[Configuration Error] Production environment requires an explicit, non-empty DATABASE_URL.',
+      );
+    }
+    if (!env.OPERATOR_API_KEY || env.OPERATOR_API_KEY.trim() === '') {
+      throw new Error(
+        '[Configuration Error] Production environment requires an explicit, non-empty OPERATOR_API_KEY.',
+      );
+    }
+    const trimmedKey = env.OPERATOR_API_KEY.trim();
+    if (
+      trimmedKey === 'europa-dev-key' ||
+      trimmedKey === 'voidline-dev-key' ||
+      trimmedKey === 'test-operator-key'
+    ) {
+      throw new Error(
+        '[Configuration Error] Predictable development API keys cannot be used in production.',
+      );
+    }
+    if (trimmedKey.length < 16) {
+      throw new Error(
+        '[Configuration Error] Production OPERATOR_API_KEY must be at least 16 characters in length.',
+      );
+    }
+  }
+
   let databaseUrl;
   if (isTest) {
     // In test environment, prioritize explicit test database URL and prevent silent fallbacks to dev or prod databases
@@ -74,7 +105,7 @@ export function loadConfig(env = process.env) {
       45,
     ),
     operatorApiKey: env.OPERATOR_API_KEY || (isTest ? 'test-operator-key' : 'europa-dev-key'),
-    isProduction: nodeEnv === 'production',
+    isProduction,
     isTest,
   });
 }

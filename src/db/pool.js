@@ -58,6 +58,43 @@ export async function testConnection() {
 }
 
 /**
+ * Executes a callback within a managed database transaction with automatic
+ * BEGIN, COMMIT, and safe ROLLBACK. Ensures client is released in all cases.
+ *
+ * @template T
+ * @param {(client: pg.PoolClient) => Promise<T>} callback
+ * @param {object} [options={}]
+ * @param {string} [options.isolationLevel] - e.g. 'READ COMMITTED', 'SERIALIZABLE'
+ * @param {string} [options.connectionString]
+ * @returns {Promise<T>}
+ */
+export async function withTransaction(callback, options = {}) {
+  const pool = getPool(options.connectionString);
+  const client = await pool.connect();
+
+  try {
+    const beginSql = options.isolationLevel
+      ? `BEGIN TRANSACTION ISOLATION LEVEL ${options.isolationLevel};`
+      : 'BEGIN;';
+    await client.query(beginSql);
+
+    const result = await callback(client);
+
+    await client.query('COMMIT;');
+    return result;
+  } catch (err) {
+    try {
+      await client.query('ROLLBACK;');
+    } catch (rbErr) {
+      console.error('[Database Transaction] Rollback encountered error:', rbErr.message);
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Closes the connection pool (used during graceful shutdown and tests).
  * @returns {Promise<void>}
  */

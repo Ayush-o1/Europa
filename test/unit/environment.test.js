@@ -24,6 +24,7 @@ describe('Environment Configuration Loader', () => {
       STORAGE_DIR: '/var/europa/snapshots',
       CORRELATION_STEP_TOLERANCE_MINUTES: '30',
       CORRELATION_MAX_CUMULATIVE_DRIFT_MINUTES: '60',
+      OPERATOR_API_KEY: 'prod-secure-operator-key-entropy-1234',
     };
 
     const config = loadConfig(customEnv);
@@ -35,8 +36,46 @@ describe('Environment Configuration Loader', () => {
     expect(config.storageDir).toBe('/var/europa/snapshots');
     expect(config.correlationStepToleranceMinutes).toBe(30);
     expect(config.correlationMaxCumulativeDriftMinutes).toBe(60);
+    expect(config.operatorApiKey).toBe('prod-secure-operator-key-entropy-1234');
     expect(config.isProduction).toBe(true);
     expect(config.isTest).toBe(false);
+  });
+
+  it('rejects production startup when required database configuration is missing', () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'production',
+        OPERATOR_API_KEY: 'prod-secure-operator-key-entropy-1234',
+      }),
+    ).toThrowError(/DATABASE_URL/);
+  });
+
+  it('rejects production startup when required operator secret is missing or insecure', () => {
+    // Missing key
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://analyst:secret@remote-db:5432/europa_prod',
+      }),
+    ).toThrowError(/OPERATOR_API_KEY/);
+
+    // Predictable development key
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://analyst:secret@remote-db:5432/europa_prod',
+        OPERATOR_API_KEY: 'europa-dev-key',
+      }),
+    ).toThrowError(/Predictable development API keys cannot be used/);
+
+    // Insufficient key entropy (< 16 chars)
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://analyst:secret@remote-db:5432/europa_prod',
+        OPERATOR_API_KEY: 'short-key',
+      }),
+    ).toThrowError(/at least 16 characters/);
   });
 
   it('safely falls back to defaults when numeric environment variables are invalid', () => {

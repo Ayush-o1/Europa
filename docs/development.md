@@ -92,7 +92,7 @@ Run the transactional migration runner to apply all pending SQL schemas:
 npm run db:migrate
 ```
 
-This applies migrations from `src/db/migrations/` sequentially (`001_phase1_initial_schema.sql` through `005_orbital_propagation_tables.sql`) under PostgreSQL advisory locks.
+This applies migrations from `src/db/migrations/` sequentially (`001_phase1_initial_schema.sql` through `006_backend_reliability_indexes.sql`) under PostgreSQL advisory locks.
 
 ### 2.5 Start the Application
 
@@ -114,18 +114,18 @@ Once running:
 
 ## 3. Environment Variables Reference
 
-| Variable                                   | Default Value                                       | Description                                                                                         | Required |
-| :----------------------------------------- | :-------------------------------------------------- | :-------------------------------------------------------------------------------------------------- | :------: |
-| `PORT`                                     | `3000`                                              | HTTP listening port for the Express application.                                                    |    No    |
-| `HOST`                                     | `0.0.0.0`                                           | Network interface binding host.                                                                     |    No    |
-| `NODE_ENV`                                 | `development`                                       | Runtime environment mode (`development`, `test`, `production`).                                     |    No    |
-| `LOG_LEVEL`                                | `info`                                              | Logging verbosity (`debug`, `info`, `warn`, `error`).                                               |    No    |
-| `DATABASE_URL`                             | `postgresql://<user>@localhost:5432/europa_dev`     | Connection string for development/production PostgreSQL database.                                   |   Yes    |
-| `TEST_DATABASE_URL`                        | `postgresql://<user>@localhost:5432/europa_test`    | Dedicated connection string for automated test suites.                                              | In tests |
-| `STORAGE_DIR`                              | `./storage/snapshots`                               | Filesystem directory where raw uploaded snapshots are archived.                                     |    No    |
-| `CORRELATION_STEP_TOLERANCE_MINUTES`       | `20`                                                | Maximum TCA difference between consecutive observations to correlate into the same encounter event. |    No    |
-| `CORRELATION_MAX_CUMULATIVE_DRIFT_MINUTES` | `45`                                                | Maximum allowable TCA drift between any observation and the event's initial TCA.                    |    No    |
-| `OPERATOR_API_KEY`                         | `europa-dev-key` (dev) / `test-operator-key` (test) | Pre-shared key for write operations (snapshot ingestion, reviews).                                  | In prod  |
+| Variable                                   | Default Value                                       | Description                                                                                                | Required |
+| :----------------------------------------- | :-------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- | :------: |
+| `PORT`                                     | `3000`                                              | HTTP listening port for the Express application.                                                           |    No    |
+| `HOST`                                     | `0.0.0.0`                                           | Network interface binding host.                                                                            |    No    |
+| `NODE_ENV`                                 | `development`                                       | Runtime environment mode (`development`, `test`, `production`).                                            |    No    |
+| `LOG_LEVEL`                                | `info`                                              | Logging verbosity (`debug`, `info`, `warn`, `error`).                                                      |    No    |
+| `DATABASE_URL`                             | `postgresql://<user>@localhost:5432/europa_dev`     | Connection string for PostgreSQL database. Strictly required in production without fallback.               | In prod  |
+| `TEST_DATABASE_URL`                        | `postgresql://<user>@localhost:5432/europa_test`    | Dedicated connection string for automated test suites.                                                     | In tests |
+| `STORAGE_DIR`                              | `./storage/snapshots`                               | Filesystem directory where raw uploaded snapshots are archived.                                            |    No    |
+| `CORRELATION_STEP_TOLERANCE_MINUTES`       | `20`                                                | Maximum TCA difference between consecutive observations to correlate into the same encounter event.        |    No    |
+| `CORRELATION_MAX_CUMULATIVE_DRIFT_MINUTES` | `45`                                                | Maximum allowable TCA drift between any observation and the event's initial TCA.                           |    No    |
+| `OPERATOR_API_KEY`                         | `europa-dev-key` (dev) / `test-operator-key` (test) | Pre-shared key for write operations (snapshot ingestion, reviews). Strictly required in prod (>=16 chars). | In prod  |
 
 ---
 

@@ -209,7 +209,9 @@ Europa includes an integrated orbital propagation module (`src/modules/propagati
 
 - Mounted under `/api/v1`.
 - Uniform JSON envelopes for all responses: `{ success: true, data: ..., pagination: ... }` or `{ success: false, error: { code, message, details } }`.
-- Operator authentication via `X-API-Key` or `Authorization: Bearer <key>` header on all mutating endpoints (`/ingest/snapshots`, `/events/:id/reviews`, and persisted `/propagation/estimate`).
+- Defense-in-depth HTTP security headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 0`, `Referrer-Policy: strict-origin-when-cross-origin`, and restrictive Content Security Policy (`CSP`).
+- Constant-time timing-safe operator authentication (`crypto.timingSafeEqual`) via `X-API-Key` or `Authorization: Bearer <key>` header on all mutating endpoints (`/ingest/snapshots`, `/events/:id/reviews`, and persisted `/propagation/estimate`).
+- Fail-closed production configuration: startup strictly enforces non-empty `DATABASE_URL` and high-entropy `OPERATOR_API_KEY` (rejecting development default keys).
 - Input validation middlewares enforcing parameter formats, types, and allowed enumeration values.
 
 ### 7.2 Analytical Web Workbench (`public/`)

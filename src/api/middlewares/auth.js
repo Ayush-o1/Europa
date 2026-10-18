@@ -5,7 +5,25 @@
  * Read-only operations remain publicly accessible for analysis and inspection.
  */
 
+import crypto from 'node:crypto';
 import { config } from '../../config/env.js';
+
+/**
+ * Performs a constant-time equality check on two secret strings by comparing
+ * their fixed-length SHA-256 digests.
+ *
+ * @param {string} a
+ * @param {string} b
+ * @returns {boolean}
+ */
+export function safeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length === 0 || b.length === 0) {
+    return false;
+  }
+  const hashA = crypto.createHash('sha256').update(a).digest();
+  const hashB = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
 
 /**
  * Middleware ensuring write requests carry a valid operator API key.
@@ -38,10 +56,21 @@ export function requireOperatorAuth(req, res, next) {
     });
   }
 
-  const isAuthorized =
-    providedKey === config.operatorApiKey ||
-    (!config.isProduction &&
-      (providedKey === 'europa-dev-key' || providedKey === 'voidline-dev-key'));
+  const expectedKey = config.operatorApiKey;
+  let isAuthorized = false;
+
+  if (expectedKey && safeCompare(providedKey, expectedKey)) {
+    isAuthorized = true;
+  } else if (!config.isProduction) {
+    // Development / non-production convenience fallbacks
+    if (
+      safeCompare(providedKey, 'europa-dev-key') ||
+      safeCompare(providedKey, 'voidline-dev-key') ||
+      (config.isTest && safeCompare(providedKey, 'test-operator-key'))
+    ) {
+      isAuthorized = true;
+    }
+  }
 
   if (!isAuthorized) {
     return res.status(403).json({

@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { v1Router } from './api/router.js';
 import { requestLogger } from './api/middlewares/requestLogger.js';
 import { errorHandler } from './api/middlewares/errorHandler.js';
+import { securityHeaders } from './api/middlewares/securityHeaders.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +29,9 @@ export function createApp() {
 
   // Disable 'x-powered-by' header to prevent leaking framework fingerprint
   app.disable('x-powered-by');
+
+  // Enforce baseline HTTP security headers
+  app.use(securityHeaders);
 
   // Request body parsing with strict size limits
   app.use(express.json({ limit: '1mb' }));
