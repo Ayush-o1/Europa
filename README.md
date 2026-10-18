@@ -159,6 +159,9 @@ cp .env.example .env
 
 # Apply database schema migrations
 npm run db:migrate
+
+# Seed reproducible demo dataset (optional for instant exploration)
+npm run db:seed
 ```
 
 ### 3. Start the Server
@@ -177,21 +180,60 @@ For detailed setup, environment variables, and troubleshooting, see [docs/develo
 
 ---
 
+## Demo Walkthrough & Visual Evidence
+
+For evaluators and developers inspecting Europa, the application includes a deterministic demo seeder (`npm run db:seed`) and real visual evidence captured directly from the running system.
+
+### Recommended Evaluation Flow
+
+1. **Operational Overview (`#overview`):**
+   Examine active encounter totals, the 5.000 km close-approach threshold, urgency tier distribution bars (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`), and latest snapshot provenance.
+2. **Triage Queue (`#events`):**
+   Filter encounters by Priority Urgency or sort by miss distance. Inspect the sorted table showing canonical pairs, TCA countdowns, and operational statuses.
+3. **Event Detail & Prediction Evolution (`#details/:id`):**
+   Select the synthetic tightening encounter (`90001:90002`). Observe the SVG prediction evolution chart displaying miss distance tightening from 4.500 km down to 0.280 km across successive snapshot arrivals, alongside the multi-factor assessment score breakdown (68.00/100 PTS).
+4. **Operator Review Workflow:**
+   Enter the operator key in the header (`europa-dev-key` in dev), select an action (`ACKNOWLEDGE`, `ESCALATE`, `DISMISS`), submit a required technical justification (minimum 10 characters), and verify that the review decision updates immutably.
+5. **Experimental SGP4 Trajectory Screening (`#propagation`):**
+   Load standard TLE presets (e.g. ISS vs Cosmos debris) or custom TLE pairs, run orbit propagation with `satellite.js`, and evaluate the encounter range profile chart under explicit experimental warnings.
+6. **Snapshot Ingestion (`#ingestion`):**
+   Inspect the drag-and-drop CSV upload card, screening scopes (`LOCAL_FIXTURE` vs `FULL_CATALOG_MINRANGE`), and the batch provenance table displaying SHA-256 archive checksums and deduplication logs.
+7. **Cryptographic Audit Ledger (`#audit`):**
+   Click **"Run Cryptographic Verification"** to execute client-triggered verification of the entire SHA-256 hash chain from genesis to head across all ledger records.
+
+### Visual Evidence Gallery
+
+Genuine high-resolution screenshots captured directly from the running web application via Playwright are persisted in `artifacts/phase-4/screenshots/`:
+
+| Screenshot                                                                                               | Description                                                                 |      Viewport      |
+| :------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------- | :----------------: |
+| [**01_dashboard_overview.png**](artifacts/phase-4/screenshots/01_dashboard_overview.png)                 | Operational overview with KPI cards, urgency breakdown, and telemetry strip | Desktop (1440x900) |
+| [**02_triage_queue.png**](artifacts/phase-4/screenshots/02_triage_queue.png)                             | Conjunction triage queue filtered by urgency and sorted by miss distance    | Desktop (1440x900) |
+| [**03_event_detail_and_evolution.png**](artifacts/phase-4/screenshots/03_event_detail_and_evolution.png) | Event investigation, SVG range evolution chart, and review breakdown        | Desktop (1440x900) |
+| [**04_sgp4_orbital_screening.png**](artifacts/phase-4/screenshots/04_sgp4_orbital_screening.png)         | Experimental SGP4 orbital screening workbench and encounter range profile   | Desktop (1440x900) |
+| [**05_ingestion_and_provenance.png**](artifacts/phase-4/screenshots/05_ingestion_and_provenance.png)     | SOCRATES snapshot upload dropzone and completed batch provenance table      | Desktop (1440x900) |
+| [**06_audit_ledger_verification.png**](artifacts/phase-4/screenshots/06_audit_ledger_verification.png)   | Cryptographic hash chain verification status (`CHAIN INTACT`, 17 records)   | Desktop (1440x900) |
+| [**07_mobile_dashboard.png**](artifacts/phase-4/screenshots/07_mobile_dashboard.png)                     | Responsive mobile overview dashboard and compact KPI cards                  |  Mobile (375x812)  |
+| [**08_mobile_event_detail.png**](artifacts/phase-4/screenshots/08_mobile_event_detail.png)               | Responsive mobile event detail, observation timeline, and audit history     |  Mobile (375x812)  |
+
+---
+
 ## Available Commands
 
-| Command                | Purpose                                                            |
-| :--------------------- | :----------------------------------------------------------------- |
-| `npm start`            | Launch the Express server on configured `PORT` (default 3000)      |
-| `npm run dev`          | Launch server in watch mode with automatic reload (`node --watch`) |
-| `npm test`             | Run Vitest unit and integration suites against `europa_test`       |
-| `npm run test:watch`   | Run Vitest in interactive watch mode                               |
-| `npm run test:e2e`     | Execute Playwright real-browser end-to-end tests                   |
-| `npm run benchmark`    | Run reproducible performance benchmark against `europa_test`       |
-| `npm run db:migrate`   | Apply pending SQL schema migrations with advisory locking          |
-| `npm run lint`         | Inspect code with ESLint 10                                        |
-| `npm run lint:fix`     | Automatically resolve fixable ESLint issues                        |
-| `npm run format:check` | Verify formatting across the codebase with Prettier 3              |
-| `npm run format`       | Apply Prettier formatting across the codebase                      |
+| Command                | Purpose                                                                 |
+| :--------------------- | :---------------------------------------------------------------------- |
+| `npm start`            | Launch the Express server on configured `PORT` (default 3000)           |
+| `npm run dev`          | Launch server in watch mode with automatic reload (`node --watch`)      |
+| `npm test`             | Run Vitest unit and integration suites against `europa_test`            |
+| `npm run test:watch`   | Run Vitest in interactive watch mode                                    |
+| `npm run test:e2e`     | Execute Playwright real-browser end-to-end tests                        |
+| `npm run benchmark`    | Run reproducible performance benchmark against `europa_test`            |
+| `npm run db:migrate`   | Apply pending SQL schema migrations with advisory locking               |
+| `npm run db:seed`      | Seed deterministic demo fixtures into development database (idempotent) |
+| `npm run lint`         | Inspect code with ESLint 10                                             |
+| `npm run lint:fix`     | Automatically resolve fixable ESLint issues                             |
+| `npm run format:check` | Verify formatting across the codebase with Prettier 3                   |
+| `npm run format`       | Apply Prettier formatting across the codebase                           |
 
 ---
 

@@ -94,7 +94,24 @@ npm run db:migrate
 
 This applies migrations from `src/db/migrations/` sequentially (`001_phase1_initial_schema.sql` through `006_backend_reliability_indexes.sql`) under PostgreSQL advisory locks.
 
-### 2.5 Start the Application
+### 2.5 Populate Deterministic Demo Data
+
+To immediately explore Europa with populated conjunctions, prediction evolution charts, operator reviews, and audit trails:
+
+```bash
+npm run db:seed
+```
+
+The seeder is:
+
+- **Deterministic & Idempotent:** Runs three repeatable snapshots (synthetic baseline, synthetic tightening update, and a real public SOCRATES sample) under `LOCAL_FIXTURE` screening scope. Running `npm run db:seed` repeatedly detects existing batches and skips mutations without creating duplicates or breaking the audit chain.
+- **Production-Guarded:** Fails closed immediately if `NODE_ENV=production` or if the database URL points to a production database.
+- **Safe Reset:** To reset the demo tables on local development or test databases, run:
+  ```bash
+  npm run db:seed -- --clean
+  ```
+
+### 2.6 Start the Application
 
 ```bash
 # Development mode with automatic file reloading
@@ -161,6 +178,8 @@ All commands can be executed from the project root:
 | `npm run test:watch`   | Vitest Interactive Watch Mode    | Runs against `europa_test`                            |
 | `npm run test:e2e`     | Playwright Browser E2E Workflows | Spawns test server on port 3099 against `europa_test` |
 | `npm run benchmark`    | Performance & Stress Benchmark   | Controlled workloads against `europa_test`            |
+| `npm run db:migrate`   | Apply SQL Schema Migrations      | Applies migrations to `europa_dev` or `europa_test`   |
+| `npm run db:seed`      | Seed Deterministic Demo Data     | Safe, idempotent fixture seeder for `europa_dev`      |
 | `npm run lint`         | ESLint 10 Static Analysis        | Source and test files                                 |
 | `npm run lint:fix`     | ESLint Automated Fixes           | Safe lint autofixes                                   |
 | `npm run format:check` | Prettier 3 Style Verification    | Checks formatting across repository                   |
