@@ -29,22 +29,45 @@ export const DEMO_TIMESTAMPS = {
 };
 
 /**
- * Validates that the runtime environment is strictly non-production.
+ * Validates that the runtime environment is safe for demo data operations.
  * Throws a fatal Error if production environment or credentials are detected.
+ * Pure non-destructive fixture seeding may be explicitly enabled for hosted demo
+ * instances via ALLOW_HOSTED_DEMO_SEED=true. Destructive table cleanup is always forbidden.
  *
  * @param {ReturnType<typeof loadConfig>} config
+ * @param {boolean} [isCleanOperation=false]
  */
-export function assertSafeDemoEnvironment(config) {
-  if (process.env.NODE_ENV === 'production' || config?.isProduction) {
+export function assertSafeDemoEnvironment(config, isCleanOperation = false) {
+  const isProduction = process.env.NODE_ENV === 'production' || config?.isProduction;
+  const dbUrl = (config?.databaseUrl || process.env.DATABASE_URL || '').toLowerCase();
+  const isProdDb = dbUrl.includes('prod') || dbUrl.includes('production');
+
+  if (isCleanOperation) {
+    if (isProduction) {
+      throw new Error(
+        '[Security Guard] Demo cleanup aborted: Refusing to clean or reset database tables in a PRODUCTION environment (NODE_ENV=production).',
+      );
+    }
+    if (isProdDb) {
+      throw new Error(
+        '[Security Guard] Demo cleanup aborted: Target database URL appears to reference a PRODUCTION database.',
+      );
+    }
+    return;
+  }
+
+  // Pure non-destructive demo fixture seeding
+  const allowHostedDemoSeed = process.env.ALLOW_HOSTED_DEMO_SEED === 'true';
+
+  if (isProduction && !allowHostedDemoSeed) {
     throw new Error(
-      '[Security Guard] Demo seeder aborted: Refusing to seed demo data in a PRODUCTION environment (NODE_ENV=production).',
+      '[Security Guard] Demo seeder aborted: Refusing to seed demo data in a PRODUCTION environment (NODE_ENV=production) without explicit ALLOW_HOSTED_DEMO_SEED=true.',
     );
   }
 
-  const dbUrl = (config?.databaseUrl || process.env.DATABASE_URL || '').toLowerCase();
-  if (dbUrl.includes('prod') || dbUrl.includes('production')) {
+  if (isProdDb && !allowHostedDemoSeed) {
     throw new Error(
-      '[Security Guard] Demo seeder aborted: Target database URL appears to reference a PRODUCTION database.',
+      '[Security Guard] Demo seeder aborted: Target database URL appears to reference a PRODUCTION database without explicit ALLOW_HOSTED_DEMO_SEED=true.',
     );
   }
 }
@@ -58,7 +81,7 @@ export function assertSafeDemoEnvironment(config) {
  */
 export async function cleanDemoData(options = {}) {
   const config = loadConfig(options.env);
-  assertSafeDemoEnvironment(config);
+  assertSafeDemoEnvironment(config, true);
 
   const dbUrl = (options.connectionString || config.databaseUrl || '').toLowerCase();
   const isLocalOrTest =

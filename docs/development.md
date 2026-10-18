@@ -234,3 +234,31 @@ Benchmark results and JSON metrics summaries are output to the console and writt
 
 - **Cause:** A test or test script was executed with `DATABASE_URL` pointing to `europa_dev` or an unlabelled database.
 - **Fix:** Ensure `NODE_ENV=test` and `TEST_DATABASE_URL` points to a database name containing `test` (e.g., `europa_test`).
+
+---
+
+## 7. Containerized Development & Production Operations
+
+### Zero-Configuration Docker Compose
+
+To run Europa and an isolated PostgreSQL 16 database without configuring local software:
+
+```bash
+# Build and run the multi-container stack in the background
+docker compose up -d --build
+
+# Inspect running container logs
+docker compose logs -f app
+
+# Tear down the stack and preserve persistent database volumes
+docker compose down
+```
+
+The application automatically applies schema migrations and starts on `http://localhost:3000`.
+
+### Production Deployment & Runbook
+
+For production hosting, secrets rotation, managed backups, and disaster recovery:
+
+- Consult the **[Production Deployment Runbook](deployment-runbook.md)** for detailed Render PaaS, Docker, and Linux deployment topologies.
+- Review the **[Pre-Launch Verification Checklist](launch-checklist.md)** prior to directing production traffic.

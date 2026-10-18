@@ -1,0 +1,58 @@
+# Europa — Docker Compose Stack
+# Multi-container local production simulation & self-hosted deployment.
+# Usage: docker compose up -d
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: europa-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: europa_user
+      POSTGRES_PASSWORD: europa_secure_db_password_123
+      POSTGRES_DB: europa
+    ports:
+      - '5432:5432'
+    volumes:
+      - europa_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U europa_user -d europa']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - europa-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: europa-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://europa_user:europa_secure_db_password_123@db:5432/europa
+      DATABASE_SSL: 'false'
+      OPERATOR_API_KEY: europa-production-operator-key-entropy-1234
+      STORAGE_DIR: /app/storage/snapshots
+      CORRELATION_STEP_TOLERANCE_MINUTES: 20
+      CORRELATION_MAX_CUMULATIVE_DRIFT_MINUTES: 45
+    ports:
+      - '3000:3000'
+    command: >
+      sh -c "npm run db:migrate && node src/index.js"
+    networks:
+      - europa-network
+
+volumes:
+  europa_db_data:
+    driver: local
+
+networks:
+  europa-network:
+    driver: bridge

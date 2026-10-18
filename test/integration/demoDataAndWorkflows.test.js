@@ -68,6 +68,48 @@ describe('Europa Demo Data Seeder & Workflow State', () => {
         }),
       ).rejects.toThrowError(/not a recognized local or test database/);
     });
+
+    it('permits non-destructive seeding when ALLOW_HOSTED_DEMO_SEED is explicitly set', () => {
+      const originalFlag = process.env.ALLOW_HOSTED_DEMO_SEED;
+      const originalEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = 'production';
+        process.env.ALLOW_HOSTED_DEMO_SEED = 'true';
+        expect(() =>
+          assertSafeDemoEnvironment(
+            {
+              isProduction: true,
+              databaseUrl: 'postgresql://hosted-db.cloud:5432/europa_prod',
+            },
+            false,
+          ),
+        ).not.toThrow();
+      } finally {
+        process.env.ALLOW_HOSTED_DEMO_SEED = originalFlag;
+        process.env.NODE_ENV = originalEnv;
+      }
+    });
+
+    it('strictly forbids table cleanup even when ALLOW_HOSTED_DEMO_SEED is set', () => {
+      const originalFlag = process.env.ALLOW_HOSTED_DEMO_SEED;
+      const originalEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = 'production';
+        process.env.ALLOW_HOSTED_DEMO_SEED = 'true';
+        expect(() =>
+          assertSafeDemoEnvironment(
+            {
+              isProduction: true,
+              databaseUrl: 'postgresql://hosted-db.cloud:5432/europa_prod',
+            },
+            true,
+          ),
+        ).toThrowError(/Refusing to clean or reset database tables in a PRODUCTION environment/);
+      } finally {
+        process.env.ALLOW_HOSTED_DEMO_SEED = originalFlag;
+        process.env.NODE_ENV = originalEnv;
+      }
+    });
   });
 
   describe('2. Deterministic Seeding & Idempotency', () => {

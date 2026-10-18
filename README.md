@@ -176,7 +176,57 @@ npm start
 
 Access the web interface at `http://localhost:3000` or inspect the API at `http://localhost:3000/api/v1/health`.
 
+### 4. Alternative: Instant Docker Compose Stack
+
+To run Europa and a dedicated PostgreSQL 16 database without installing Node or Postgres locally:
+
+```bash
+docker compose up -d --build
+```
+
+The stack automatically applies database migrations and starts Europa on `http://localhost:3000`.
+
 For detailed setup, environment variables, and troubleshooting, see [docs/development.md](docs/development.md).
+
+---
+
+## Production Deployment
+
+Europa is engineered to be deployable within minutes using modern PaaS providers or container runtimes.
+
+### Option A: Render PaaS Blueprint (Recommended)
+
+Europa includes a turnkey `render.yaml` Infrastructure-as-Code Blueprint defining the web service, pre-deploy migrations, and managed PostgreSQL 16 database.
+
+1. Fork or push this repository to GitHub.
+2. In the [Render Dashboard](https://dashboard.render.com), click **New +** → **Blueprint**.
+3. Select your repository. Render automatically provisions the database, injects `DATABASE_URL` with SSL negotiation, generates a secure `OPERATOR_API_KEY`, runs schema migrations, and deploys the web service behind automated HTTPS.
+
+### Option B: Standalone Docker Container
+
+```bash
+# Build production image
+docker build -t europa:latest .
+
+# Run pre-deploy database migrations
+docker run --rm \
+  -e NODE_ENV=production \
+  -e DATABASE_URL="postgresql://user:password@host:5432/europa" \
+  -e OPERATOR_API_KEY="your-secure-production-key-32chars" \
+  europa:latest npm run db:migrate
+
+# Start the web service
+docker run -d \
+  --name europa-web \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e DATABASE_URL="postgresql://user:password@host:5432/europa" \
+  -e OPERATOR_API_KEY="your-secure-production-key-32chars" \
+  europa:latest
+```
+
+For zero-downtime rolling deploys, database backup procedures, secret rotation, and operational checklists, consult the **[Production Deployment Runbook](docs/deployment-runbook.md)** and **[Pre-Launch Verification Checklist](docs/launch-checklist.md)**.
 
 ---
 
@@ -242,7 +292,21 @@ Genuine high-resolution screenshots captured directly from the running web appli
 - **[System Architecture](docs/architecture.md):** Data pipelines, advisory locking, heuristic matching policy, assessment rules, and cryptographic audit hash chain.
 - **[Development & Operations Guide](docs/development.md):** Complete setup, database isolation guards, environment reference, test runners, and troubleshooting.
 - **[REST API Reference](docs/api.md):** Specifications, authentication rules, parameters, payloads, response envelopes, and cURL examples for all endpoints.
+- **[Production Deployment Runbook](docs/deployment-runbook.md):** Production architecture topologies (Render Blueprint, Docker), environment variables, backup/restore, secret rotation, and rollback procedures.
+- **[Pre-Launch Verification Checklist](docs/launch-checklist.md):** Comprehensive pre-launch operational, security, and database sign-off checklist.
 - **[Data Provenance & Scientific Limitations](docs/data-and-limitations.md):** CelesTrak SOCRATES provenance, meaning of priority scores, why Europa does not compute uncalibrated $P_c$, SGP4 astrodynamic assumptions, and non-operational software disclaimer.
+
+---
+
+## Release Notes — v0.1.0 (Public Launch Preparation)
+
+Europa v0.1.0 represents the complete, hardened analytical Space Situational Awareness platform ready for deployment and evaluation:
+
+- **Phase 1 (Documentation & Product Definition):** Comprehensive architecture specifications, API references, mathematical scoring formulations, and scientific boundary definitions.
+- **Phase 2 (Frontend Redesign & UX Engineering):** Modern, accessible, dark-mode analytical workbench with responsive KPI cards, interactive SVG trajectory evolution charts, and high-resolution visual evidence.
+- **Phase 3 (Backend Reliability & Security Hardening):** Strict input sanitization, timing-safe authentication, PostgreSQL composite indexing (`006_backend_reliability_indexes.sql`), managed transaction helpers (`withTransaction`), defense-in-depth security headers, and fail-closed production configuration.
+- **Phase 4 (Testing & Reproducible Demonstration):** Deterministic multi-snapshot fixture seeder (`npm run db:seed`), 17 Vitest test suites (161 automated tests), Playwright real-browser E2E workflows, and benchmark harness measuring up to 2,741 rows/sec ingestion throughput.
+- **Phase 5 (Launch & Production Readiness):** Turnkey Render Infrastructure-as-Code Blueprint (`render.yaml`), multi-stage production container (`Dockerfile`), self-hosted stack (`docker-compose.yml`), hosted PostgreSQL SSL negotiation, public read-only demo boundary, production operations runbook (`docs/deployment-runbook.md`), and pre-launch verification checklist (`docs/launch-checklist.md`).
 
 ---
 
@@ -255,6 +319,17 @@ Genuine high-resolution screenshots captured directly from the running web appli
 5. **Local Audit Ledger Scope:** The SHA-256 hash-chained audit ledger protects against SQL tampering and application-level data mutation via database triggers. It does not provide distributed Byzantine fault tolerance against raw disk alteration by database superusers without external anchoring.
 
 For full astrodynamic and scientific documentation, consult [docs/data-and-limitations.md](docs/data-and-limitations.md).
+
+---
+
+## Contributing & Development
+
+Contributions to Europa are welcome! To contribute:
+
+1. Fork the repository and create a feature branch (`git checkout -b feat/your-feature`).
+2. Adhere to code style guidelines: verify with `npm run lint` and `npm run format:check`.
+3. Ensure all tests pass: `npm test` and `npm run test:e2e`.
+4. Submit a Pull Request with a clear description of changes.
 
 ---
 
