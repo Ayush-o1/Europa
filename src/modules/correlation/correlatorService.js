@@ -5,6 +5,7 @@
 
 import { getPool } from '../../db/pool.js';
 import { evaluateObservationMatch, DEFAULT_MATCHING_POLICY } from './matchingPolicy.js';
+import { assessAndSaveEvent } from '../assessment/assessmentService.js';
 
 /**
  * Correlates all un-correlated observations in an ingestion batch.
@@ -188,6 +189,10 @@ export async function correlateBatch(batchId, options = {}) {
             ],
           );
 
+          await assessAndSaveEvent(client, createdEvent, obs, {
+            referenceTime: obs.captured_at,
+          });
+
           activeEvents.push(createdEvent);
           matchedEventsInBatch.add(createdEvent.id);
           stats.eventsCreated += 1;
@@ -228,6 +233,8 @@ export async function correlateBatch(batchId, options = {}) {
             [targetEvent.id, obs.id, nextSequence, isUnchangedConfirmation],
           );
 
+          let updatedEventRecord;
+
           // Update event fields based on chronological freshness
           if (!isBackfill) {
             // Normal chronological update: advance latest fields
@@ -244,10 +251,11 @@ export async function correlateBatch(batchId, options = {}) {
                RETURNING *;`,
               [obs.tca, obs.captured_at, obs.tca_range_km, obs.tca_range_km, targetEvent.id],
             );
+            updatedEventRecord = updatedEvtRes.rows[0];
             // Update in-memory reference
             const idx = activeEvents.findIndex(e => e.id === targetEvent.id);
             if (idx !== -1) {
-              activeEvents[idx] = updatedEvtRes.rows[0];
+              activeEvents[idx] = updatedEventRecord;
             }
           } else {
             // Out-of-order backfill: do NOT overwrite latest_tca or latest_range_km!
@@ -260,11 +268,18 @@ export async function correlateBatch(batchId, options = {}) {
                RETURNING *;`,
               [obs.tca_range_km, targetEvent.id],
             );
+            updatedEventRecord = updatedEvtRes.rows[0];
             const idx = activeEvents.findIndex(e => e.id === targetEvent.id);
             if (idx !== -1) {
-              activeEvents[idx] = updatedEvtRes.rows[0];
+              activeEvents[idx] = updatedEventRecord;
             }
           }
+
+          // Assess updated event and persist historical assessment record
+          await assessAndSaveEvent(client, updatedEventRecord, obs, {
+            referenceTime: obs.captured_at,
+            isBackfill,
+          });
 
           // Record correlation decision
           await client.query(

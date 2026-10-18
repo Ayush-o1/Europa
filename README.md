@@ -24,12 +24,13 @@ Voidline/
 ├── src/
 │   ├── config/          # Environment configuration & validation
 │   ├── db/              # PostgreSQL pool, transactional migrator & schema SQL
-│   │   ├── migrations/  # Incremental pure SQL migrations (001, 002)
+│   │   ├── migrations/  # Incremental pure SQL migrations (001, 002, 003)
 │   │   ├── migrator.js  # Transactional migration runner with advisory locking
 │   │   └── pool.js      # Connection pool & query helpers
 │   ├── modules/         # Domain modules
 │   │   ├── ingestion/   # SOCRATES CSV parser, validator & ingestion service
 │   │   ├── correlation/ # Event correlation service & matching heuristics
+│   │   ├── assessment/  # Review-priority assessment engine & versioned rules
 │   │   └── lifecycle/   # Event lifecycle state transitions (e.g., PAST_TCA)
 │   └── utils/           # Shared utility functions
 ├── scripts/             # Operational & developer CLI tools (migrate, replay, audit)
@@ -37,8 +38,8 @@ Voidline/
 │   └── snapshots/       # Immutable local raw snapshot archive
 ├── test/
 │   ├── fixtures/        # Sample scenario CSV datasets (real, malformed)
-│   ├── unit/            # Unit tests for domain logic, parser & matching policy
-│   └── integration/     # Database ingestion, concurrency & correlation tests
+│   ├── unit/            # Unit tests for domain logic, parser, matching & assessment
+│   └── integration/     # Database ingestion, correlation & assessment tests
 ├── public/              # Static frontend assets (HTML, CSS, vanilla JS)
 ├── eslint.config.js     # ESLint flat configuration
 ├── vitest.config.js     # Vitest test runner configuration
@@ -123,4 +124,12 @@ npm run db:migrate
   - Ambiguity tracking: Flagging and preserving competing intra-snapshot predictions, continuity breaks, or multiple plausible candidates without arbitrary merging.
   - Out-of-order snapshot safety: Non-destructive backfills preserving latest predicted state and historical sequence.
   - Deterministic event lifecycle manager (`PAST_TCA` transition logic with injectable reference time).
-- **Phase 3 (Risk Assessment & Scoring Engine):** Pending explicit authorization.
+- **Phase 3 (Review-Priority Assessment Engine):** Completed and verified.
+  - Additive migration `003_assessment_tables.sql`: `assessment_rule_sets`, `event_assessments`.
+  - Default rule-set `v1.0.0-heuristic`: Explainable 100-point priority scoring evaluating miss distance (50%), time to TCA (30%), upper-bound screening probability metric (15%), and data freshness (5%).
+  - Scientific boundaries: Explicitly treats `MAX_PROB` as an upper-bound screening metric under simplified covariance assumptions rather than an authoritative collision risk or maneuver threshold.
+  - Deterministic urgency classification (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) with severe proximity override (< 0.5 km within 24h).
+  - Full historical assessment trace preservation (`is_current` flagging, preventing overwrite of prior evaluations).
+  - Out-of-order backfill safety: Late historical arrivals do not demote current assessment urgency.
+  - Transparent explainability storing diagnostic component reasons, input snapshots, and rule versions.
+- **Phase 4 (Analyst Review & Ledger Audit Trail):** Pending explicit authorization.
