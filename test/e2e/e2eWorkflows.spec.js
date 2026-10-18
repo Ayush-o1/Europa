@@ -65,36 +65,43 @@ test.describe('Part 7A: Real Browser End-to-End Workflows', () => {
       }
     });
 
-    // 1. Visit root page
+    // 1. Visit root page -> verify landing page loads
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
     // Verify Title and Meta
     await expect(page).toHaveTitle(/Europa — Satellite Conjunction & Assessment Workbench/);
 
-    // 2. Health indicator reports actual server and database state
+    // Verify Landing Page hero and branding
+    await expect(page.locator('.hero-title')).toHaveText('Understand the encounters that matter.');
+    await expect(page.locator('#btn-hero-open-app')).toBeVisible();
+
+    // 2. Open workspace from landing page
+    await page.click('#btn-hero-open-app');
+
+    // 3. Health indicator reports actual server and database state in workbench
     const statusText = page.locator('#system-status-text');
     await expect(statusText).toHaveText('System Ready', { timeout: 10000 });
     const statusDot = page.locator('#system-status-dot');
     await expect(statusDot).toBeVisible();
 
-    // 3. Overview view displays meaningful zero/empty state
+    // 4. Overview view displays meaningful zero/empty state
     await expect(page.locator('h2.state-title')).toHaveText('No Conjunction Events Ingested');
     await expect(page.locator('#btn-nav-to-ingest')).toBeVisible();
 
-    // 4. Navigate to Triage Queue tab and verify empty state
+    // 5. Navigate to Triage Queue tab and verify empty state
     await page.click('#tab-events');
     await expect(page.locator('#view-content-root')).toContainText(
       'No Matching Conjunction Events',
     );
 
-    // 5. Navigate to Ingestion tab and verify empty batches state
+    // 6. Navigate to Ingestion tab and verify empty batches state
     await page.click('#tab-ingestion');
     await expect(page.locator('#batches-table-wrapper')).toContainText(
       'No ingestion batches recorded yet',
     );
 
-    // 6. Navigate to Audit Ledger tab and verify initial state
+    // 7. Navigate to Audit Ledger tab and verify initial state
     await page.click('#tab-audit');
     await expect(page.locator('.verification-card')).toBeVisible();
 
@@ -193,8 +200,8 @@ test.describe('Part 7A: Real Browser End-to-End Workflows', () => {
   test('Scenario C: Event investigation, prediction evolution, assessments, and historical charts', async ({
     page,
   }) => {
-    // Authenticate operator first
-    await page.goto('/');
+    // Authenticate operator first in workspace
+    await page.goto('/#overview');
     await page.click('#operator-auth-badge');
     await page.fill('#modal-input-key', VALID_KEY);
     await page.click('button:has-text("Save Key in Memory")');
@@ -391,7 +398,7 @@ test.describe('Part 7A: Real Browser End-to-End Workflows', () => {
   }) => {
     // 1. Viewport responsiveness: Desktop (1280x720)
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/');
+    await page.goto('/#overview');
     await expect(page.locator('.app-header')).toBeVisible();
     await expect(page.locator('.main-nav')).toBeVisible();
 
@@ -460,5 +467,89 @@ test.describe('Part 7A: Real Browser End-to-End Workflows', () => {
     // On page reload, the transient key is safely cleared from memory
     await page.reload();
     await expect(page.locator('#operator-auth-badge')).toContainText('Operator Auth: Set Key');
+  });
+
+  test('Scenario F: Landing page brand identity, responsive drawer, interactive showcase, and scientific boundaries', async ({
+    page,
+  }) => {
+    // 1. Visit landing page root
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Check brand wordmark, hero title and deck
+    await expect(page.locator('.landing-nav-bar .landing-brand-name')).toHaveText('Europa');
+    await expect(page.locator('.hero-title')).toHaveText('Understand the encounters that matter.');
+    await expect(page.locator('.hero-lead')).toContainText(
+      'An analytical workbench for satellite close-approach screening',
+    );
+
+    // Verify custom hero SVG orbital encounter illustration
+    await expect(page.locator('.hero-svg-canvas')).toBeVisible();
+
+    // 2. Interactive Product Showcase tabs switching
+    const showcaseImg = page.locator('#showcase-active-img');
+    await expect(showcaseImg).toHaveAttribute('src', /01_dashboard_overview\.png/);
+
+    // Switch to Event Detail
+    await page.click('.showcase-tab[data-shot="03"]');
+    await expect(showcaseImg).toHaveAttribute('src', /03_event_detail_and_evolution\.png/);
+    await expect(page.locator('#showcase-caption-text')).toContainText(
+      'Event Detail & Prediction Evolution',
+    );
+
+    // Switch to SGP4 Screening
+    await page.click('.showcase-tab[data-shot="04"]');
+    await expect(showcaseImg).toHaveAttribute('src', /04_sgp4_orbital_screening\.png/);
+    await expect(page.locator('#showcase-caption-text')).toContainText(
+      'Experimental SGP4 Orbital Screening',
+    );
+
+    // Switch to Audit Ledger
+    await page.click('.showcase-tab[data-shot="06"]');
+    await expect(showcaseImg).toHaveAttribute('src', /06_audit_ledger_verification\.png/);
+    await expect(page.locator('#showcase-caption-text')).toContainText(
+      'Cryptographic Audit Ledger',
+    );
+
+    // 3. Verify Scientific Boundaries & Limits section
+    await expect(page.locator('#limitations h3')).toContainText('Analytical Research Workbench');
+    await expect(page.locator('#limitations')).toContainText(
+      'MAX_PROB is an Upper-Bound Screening Metric',
+    );
+    await expect(page.locator('#limitations')).toContainText(
+      'Experimental SGP4 Trajectory Propagation',
+    );
+
+    // 4. Verify Architecture section
+    await expect(page.locator('#architecture h2')).toContainText(
+      'Engineered for high-throughput operational safety.',
+    );
+    await expect(page.locator('#architecture')).toContainText('PostgreSQL 16');
+    await expect(page.locator('#architecture')).toContainText('Node.js');
+    await expect(page.locator('#architecture')).toContainText('Express');
+
+    // 5. Mobile viewport navigation & drawer
+    await page.setViewportSize({ width: 375, height: 667 });
+    const mobileToggle = page.locator('#landing-menu-btn');
+    await expect(mobileToggle).toBeVisible();
+
+    // Drawer opens on click
+    await mobileToggle.click();
+    const mobileDrawer = page.locator('#landing-mobile-drawer');
+    await expect(mobileDrawer).toHaveClass(/open/);
+
+    // Drawer closes on escape
+    await page.keyboard.press('Escape');
+    await expect(mobileDrawer).not.toHaveClass(/open/);
+
+    // 6. Navigation to Workspace
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.click('#btn-hero-open-app');
+    await expect(page).toHaveURL(/#overview/);
+    await expect(page.locator('#app-workbench-header')).toBeVisible();
+    await expect(page.locator('#system-status-text')).toHaveText('System Ready', {
+      timeout: 10000,
+    });
   });
 });
