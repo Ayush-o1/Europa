@@ -1,7 +1,9 @@
 /**
  * @fileoverview Europa Frontend Utility Functions
- * Precision formatting for SSA metrics, timestamps, and sanitization.
+ * Precision formatting for SSA metrics, timestamps, status badges, and sanitization.
  */
+
+import { showToast } from './components/toast.js';
 
 /**
  * Escapes unsafe characters for HTML injection prevention.
@@ -19,7 +21,7 @@ export function escapeHtml(str) {
 }
 
 /**
- * Formats ISO date string to UTC standard format.
+ * Formats ISO date string to UTC standard format (e.g. 2026-10-18 19:19:25 UTC).
  * @param {string | Date | null} isoString
  * @returns {string}
  */
@@ -136,6 +138,60 @@ export function getReviewBadgeClass(status) {
     case 'UNREVIEWED':
     default:
       return 'badge-brand';
+  }
+}
+
+/**
+ * Maps operational status to status-pill class.
+ * @param {string} status
+ * @returns {string}
+ */
+export function getOperationalPillClass(status) {
+  switch (String(status).toUpperCase()) {
+    case 'OPERATIONAL':
+      return 'status-pill operational';
+    case 'PARTIALLY_OPERATIONAL':
+      return 'status-pill partially-operational';
+    case 'NON_OPERATIONAL':
+      return 'status-pill non-operational';
+    default:
+      return 'status-pill';
+  }
+}
+
+/**
+ * Truncates a hex hash string with ellipsis.
+ * @param {string} hash
+ * @param {number} [startChars=8]
+ * @param {number} [endChars=8]
+ * @returns {string}
+ */
+export function truncateHash(hash, startChars = 8, endChars = 8) {
+  if (!hash || hash.length <= startChars + endChars + 3) return hash || '—';
+  return `${hash.slice(0, startChars)}…${hash.slice(-endChars)}`;
+}
+
+/**
+ * Copies text to user clipboard and provides toast notification.
+ * @param {string} text
+ * @param {string} [label='Value']
+ */
+export async function copyToClipboard(text, label = 'Value') {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      showToast(`${label} copied to clipboard!`, 'info');
+    } else {
+      const el = document.createElement('textarea');
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      showToast(`${label} copied to clipboard!`, 'info');
+    }
+  } catch (_err) {
+    showToast(`Unable to copy ${label}`, 'warning');
   }
 }
 

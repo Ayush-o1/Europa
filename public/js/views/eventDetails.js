@@ -1,11 +1,12 @@
 /**
- * @fileoverview Parts 6C, 6D, 6E: Conjunction Event Details, Assessment Explanation,
- * Chronological Prediction Evolution, and Operator Review Workflow.
+ * @fileoverview Conjunction Event Details, Assessment Explanation,
+ * Chronological Prediction Evolution, SGP4 Screening, and Operator Review Workflow.
  */
 
 import { api } from '../apiClient.js';
 import { state } from '../state.js';
-import { renderEvolutionChart } from '../components/chart.js';
+import { renderEvolutionChart, renderEncounterProfileChart } from '../components/chart.js';
+import { setBreadcrumbs } from '../components/nav.js';
 import { showToast } from '../components/toast.js';
 import {
   escapeHtml,
@@ -16,13 +17,16 @@ import {
   formatScientific,
   getUrgencyBadgeClass,
   getReviewBadgeClass,
+  getOperationalPillClass,
+  truncateHash,
+  copyToClipboard,
   computeTleChecksum,
 } from '../utils.js';
 
 function renderSgp4ScreeningsList(screenings, event) {
   if (!screenings || screenings.length === 0) {
     return `
-      <div style="text-align: center; padding: var(--space-4); background-color: var(--bg-surface-2); border-radius: var(--radius-xs); color: var(--text-muted); font-size: var(--text-xs);">
+      <div style="text-align: center; padding: var(--space-4); background-color: var(--bg-surface-0); border-radius: var(--radius-xs); border: 1px solid var(--border-subtle); color: var(--text-muted); font-size: var(--text-xs);">
         No SGP4 encounter estimation has been computed for this pair yet. Click "Load Sample TLEs" and compute an experimental screening above.
       </div>
     `;
@@ -31,24 +35,24 @@ function renderSgp4ScreeningsList(screenings, event) {
   return screenings
     .map(
       s => `
-      <div style="background-color: var(--bg-surface-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-xs); padding: var(--space-3); margin-bottom: var(--space-2);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+      <div class="sgp4-result-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2); flex-wrap: wrap; gap: var(--space-2);">
           <div style="display: flex; align-items: center; gap: var(--space-2);">
             <span class="badge badge-brand" style="font-size: 10px;">SGP4 SCREENING</span>
             <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">${formatUtc(s.createdAt)}</span>
           </div>
-          <span style="font-size: 11px; font-family: var(--font-mono); color: ${s.primaryTleAgeHours > 72 || s.secondaryTleAgeHours > 72 ? 'var(--color-warning)' : 'var(--color-success)'};">
-            ${s.primaryTleAgeHours > 72 || s.secondaryTleAgeHours > 72 ? '⚠️ Stale TLE (>72h)' : 'Fresh Elements'}
+          <span style="font-size: 11px; font-family: var(--font-mono); color: ${s.primaryTleAgeHours > 72 || s.secondaryTleAgeHours > 72 ? 'var(--color-high)' : 'var(--color-success)'};">
+            ${s.primaryTleAgeHours > 72 || s.secondaryTleAgeHours > 72 ? '⚠️ Stale TLE (>72h)' : '✓ Fresh Elements'}
           </span>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-2); font-size: var(--text-xs);">
+        <div class="sgp4-result-grid">
           <div>
             <span style="color: var(--text-muted); font-size: 10px; display: block;">Refined TCA (UTC):</span>
-            <strong style="font-family: var(--font-mono);">${formatUtc(s.estimatedTca)}</strong>
+            <strong style="font-family: var(--font-mono); font-size: var(--text-xs);">${formatUtc(s.estimatedTca)}</strong>
           </div>
           <div>
             <span style="color: var(--text-muted); font-size: 10px; display: block;">SGP4 Miss Distance:</span>
-            <strong style="font-family: var(--font-mono); color: ${s.estimatedMissDistanceKm < 5.0 ? 'var(--color-critical)' : 'var(--text-primary)'};">
+            <strong style="font-family: var(--font-mono); font-size: var(--text-sm); color: ${s.estimatedMissDistanceKm < 1.0 ? 'var(--color-critical)' : s.estimatedMissDistanceKm < 5.0 ? 'var(--color-high)' : 'var(--text-primary)'};">
               ${formatDistance(s.estimatedMissDistanceKm)}
             </strong>
           </div>
@@ -65,6 +69,7 @@ function renderSgp4ScreeningsList(screenings, event) {
             <span style="font-family: var(--font-mono);">${s.primaryTleAgeHours}h / ${s.secondaryTleAgeHours}h</span>
           </div>
         </div>
+        ${renderEncounterProfileChart(s)}
       </div>
     `,
     )
@@ -77,9 +82,9 @@ export async function renderEventDetails(container) {
   if (!eventId) {
     container.innerHTML = `
       <div class="view-header">
-        <div class="view-title-group">
-          <h1>Event Details</h1>
-          <p class="view-description">No encounter event selected.</p>
+        <div class="view-header-main">
+          <h1 class="view-title">Event Details</h1>
+          <p class="view-desc">No encounter event selected.</p>
         </div>
       </div>
       <div class="card state-box">
@@ -97,17 +102,17 @@ export async function renderEventDetails(container) {
 
   container.innerHTML = `
     <div class="view-header">
-      <div class="view-title-group">
+      <div class="view-header-main">
         <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1);">
-          <button id="btn-back-events" class="btn btn-secondary btn-sm">← Back to Queue</button>
-          <span style="color: var(--text-muted); font-size: var(--text-sm);">/ Event Details</span>
+          <button id="btn-back-events" class="btn btn-secondary btn-xs">← Back to Queue</button>
+          <span style="color: var(--text-muted); font-size: var(--text-xs);">/ Event Details</span>
         </div>
-        <h1 id="details-event-title">Loading Encounter Event...</h1>
-        <p class="view-description">
+        <h1 id="details-event-title" class="view-title">Loading Encounter Event...</h1>
+        <p class="view-desc">
           Detailed observation evolution, explainable assessment heuristics, and auditable operational review decisions.
         </p>
       </div>
-      <div class="header-action-group">
+      <div class="view-actions">
         <button id="btn-refresh-event" class="btn btn-secondary btn-sm">↻ Refresh</button>
       </div>
     </div>
@@ -150,6 +155,12 @@ async function loadEventDetailsData(container, eventId) {
     const auditRecords = auditRes.data || [];
     const screenings = propagationRes?.data?.screenings || [];
 
+    // Set contextual breadcrumbs
+    setBreadcrumbs([
+      { label: 'Triage Queue', view: 'events' },
+      { label: `${event.primary_object_name} vs ${event.secondary_object_name}` },
+    ]);
+
     // Update view title
     const titleEl = container.querySelector('#details-event-title');
     if (titleEl) {
@@ -166,7 +177,7 @@ async function loadEventDetailsData(container, eventId) {
             <span class="object-norad">PRIMARY OBJECT (NORAD ${event.primary_object_id})</span>
             <span class="object-name">
               ${escapeHtml(event.primary_object_name)}
-              <span class="status-tag ${event.primary_operational_status === 'OPERATIONAL' ? 'active' : 'debris'}">${escapeHtml(event.primary_operational_status || 'UNKNOWN')}</span>
+              <span class="${getOperationalPillClass(event.primary_operational_status)}">${escapeHtml(event.primary_operational_status || 'UNKNOWN')}</span>
             </span>
           </div>
 
@@ -176,7 +187,7 @@ async function loadEventDetailsData(container, eventId) {
             <span class="object-norad">SECONDARY OBJECT (NORAD ${event.secondary_object_id})</span>
             <span class="object-name">
               ${escapeHtml(event.secondary_object_name)}
-              <span class="status-tag ${event.secondary_operational_status === 'OPERATIONAL' ? 'active' : 'debris'}">${escapeHtml(event.secondary_operational_status || 'UNKNOWN')}</span>
+              <span class="${getOperationalPillClass(event.secondary_operational_status)}">${escapeHtml(event.secondary_operational_status || 'UNKNOWN')}</span>
             </span>
           </div>
         </div>
@@ -212,13 +223,13 @@ async function loadEventDetailsData(container, eventId) {
 
       <!-- Encounter Metric Highlights -->
       <div class="metrics-grid" style="margin-bottom: var(--space-6);">
-        <div class="metric-card">
+        <div class="metric-card accent-brand">
           <span class="metric-label">Predicted TCA (UTC)</span>
           <span class="metric-value" style="font-size: var(--text-lg);">${formatUtc(event.latest_tca)}</span>
           <span class="metric-subtext">${formatRelativeTime(event.latest_tca)} | Initial: ${formatUtc(event.initial_tca)}</span>
         </div>
 
-        <div class="metric-card">
+        <div class="metric-card ${parseFloat(event.latest_range_km) < 1.0 ? 'accent-critical' : 'accent-high'}">
           <span class="metric-label">Current Miss Distance</span>
           <span class="metric-value" style="color: ${parseFloat(event.latest_range_km) < 1.0 ? 'var(--color-critical)' : 'var(--text-primary)'};">
             ${formatDistance(event.latest_range_km)}
@@ -226,13 +237,13 @@ async function loadEventDetailsData(container, eventId) {
           <span class="metric-subtext">Minimum predicted: ${formatDistance(event.min_predicted_range_km)}</span>
         </div>
 
-        <div class="metric-card">
+        <div class="metric-card accent-medium">
           <span class="metric-label">Observation History</span>
           <span class="metric-value">${event.observation_count}</span>
           <span class="metric-subtext">Correlated snapshots across time</span>
         </div>
 
-        <div class="metric-card">
+        <div class="metric-card accent-low">
           <span class="metric-label">Tracking Continuity</span>
           <span class="metric-value" style="font-size: var(--text-lg);">${escapeHtml(event.tracking_state)}</span>
           <span class="metric-subtext">Pair key: ${escapeHtml(event.canonical_pair_key)}</span>
@@ -241,23 +252,31 @@ async function loadEventDetailsData(container, eventId) {
 
       <!-- Main Layout: 2 Columns -->
       <div class="event-details-layout">
-        <!-- Left Column: Chart, Observations Timeline, Historical Assessments -->
+        <!-- Left Column: Chart, Observations Timeline, SGP4 Screening, Historical Audit -->
         <div class="details-main-column">
-          <!-- Prediction Evolution Chart (Part 6C) -->
+          <!-- Prediction Evolution Chart -->
           <div class="card">
             <div class="card-header">
-              <h2 class="card-title">Miss Distance Evolution (km)</h2>
+              <div>
+                <h2 class="card-title">Miss Distance Evolution (km)</h2>
+                <div class="card-subtitle">Predicted encounter range progression across incoming snapshots</div>
+              </div>
               <span style="font-size: var(--text-xs); color: var(--text-muted); font-family: var(--font-mono);">
                 ${history.length} snapshots correlated
               </span>
             </div>
-            ${renderEvolutionChart(history)}
+            <div class="chart-wrapper">
+              ${renderEvolutionChart(history)}
+            </div>
           </div>
 
-          <!-- Chronological Observation Sequence (Part 6C) -->
+          <!-- Chronological Observation Sequence -->
           <div class="card">
             <div class="card-header">
-              <h2 class="card-title">Chronological Observation Timeline</h2>
+              <div>
+                <h2 class="card-title">Chronological Observation Timeline</h2>
+                <div class="card-subtitle">Ordered raw observations linked to this encounter</div>
+              </div>
               <span style="font-size: var(--text-xs); color: var(--text-muted);">Snapshot Chronology (captured_at ASC)</span>
             </div>
             <div class="timeline">
@@ -277,25 +296,25 @@ async function loadEventDetailsData(container, eventId) {
                     </div>
                     <div class="timeline-grid">
                       <div>
-                        <span class="timeline-metric-label">Predicted TCA:</span>
-                        <span class="timeline-metric-val">${formatUtc(obs.tca)}</span>
+                        <span class="timeline-label">Predicted TCA:</span>
+                        <strong class="timeline-value">${formatUtc(obs.tca)}</strong>
                       </div>
                       <div>
-                        <span class="timeline-metric-label">Miss Distance:</span>
-                        <span class="timeline-metric-val" style="color: ${parseFloat(obs.tca_range_km) < 1.0 ? 'var(--color-critical)' : 'var(--text-primary)'};">
+                        <span class="timeline-label">Miss Distance:</span>
+                        <strong class="timeline-value" style="color: ${parseFloat(obs.tca_range_km) < 1.0 ? 'var(--color-critical)' : 'var(--text-primary)'};">
                           ${formatDistance(obs.tca_range_km)}
-                        </span>
+                        </strong>
                       </div>
                       <div>
-                        <span class="timeline-metric-label">Relative Velocity:</span>
-                        <span class="timeline-metric-val">${formatVelocity(obs.relative_speed_kms)}</span>
+                        <span class="timeline-label">Relative Velocity:</span>
+                        <span class="timeline-value">${formatVelocity(obs.relative_speed_kms)}</span>
                       </div>
                       <div>
-                        <span class="timeline-metric-label">Screening Max Prob:</span>
-                        <span class="timeline-metric-val">${formatScientific(obs.max_prob)}</span>
+                        <span class="timeline-label">Screening Max Prob:</span>
+                        <span class="timeline-value">${formatScientific(obs.max_prob)}</span>
                       </div>
                     </div>
-                    <div style="margin-top: var(--space-2); font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">
+                    <div class="timeline-source">
                       Source: ${escapeHtml(obs.source_uri)} (${escapeHtml(obs.screening_scope)})
                     </div>
                   </div>
@@ -311,14 +330,14 @@ async function loadEventDetailsData(container, eventId) {
             <div class="card-header">
               <div style="display: flex; align-items: center; gap: var(--space-2);">
                 <h2 class="card-title">Experimental Orbital Screening (SGP4)</h2>
-                <span class="badge badge-warning" style="font-size: 10px;">EXPERIMENTAL</span>
+                <span class="badge badge-medium" style="font-size: 10px;">EXPERIMENTAL</span>
               </div>
               <span style="font-size: var(--text-xs); color: var(--text-muted); font-family: var(--font-mono);">
                 satellite.js v7.1.0 (Vallado SGP4)
               </span>
             </div>
 
-            <div style="background-color: var(--bg-surface-2); border-left: 3px solid var(--color-warning); padding: var(--space-3); border-radius: var(--radius-xs); margin-bottom: var(--space-4); font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5;">
+            <div class="sgp4-banner">
               <strong>Scientific Limitation Notice:</strong> SGP4 computes mean Keplerian trajectories under simplified zonal harmonics (J2, J3, J4) and atmospheric drag. Standard TLEs lack covariance matrices and cannot calculate authoritative collision probabilities (P_c). Estimated miss distances are experimental screening aids only. SOCRATES MAX_PROB is an upper-bound screening metric.
             </div>
 
@@ -328,34 +347,34 @@ async function loadEventDetailsData(container, eventId) {
                 <span style="font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; color: var(--text-muted);">
                   Two-Line Element (TLE) Inputs
                 </span>
-                <button type="button" id="btn-load-sample-tles" class="btn btn-secondary btn-sm" style="font-size: 11px;">
+                <button type="button" id="btn-load-sample-tles" class="btn btn-secondary btn-xs">
                   Load Sample TLEs
                 </button>
               </div>
 
               <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 2px;">
+                <label class="form-label" style="font-size: 11px; margin-bottom: 2px;">
                   Primary Object (NORAD ${event.primary_object_id}) TLE:
                 </label>
-                <input type="text" id="sgp4-primary-line1" class="form-input" style="font-family: var(--font-mono); font-size: 11px; margin-bottom: 4px;" placeholder="Line 1: 1 ${event.primary_object_id}U ..." />
-                <input type="text" id="sgp4-primary-line2" class="form-input" style="font-family: var(--font-mono); font-size: 11px;" placeholder="Line 2: 2 ${event.primary_object_id} ..." />
+                <input type="text" id="sgp4-primary-line1" class="form-input tle-textarea" style="margin-bottom: 4px;" placeholder="Line 1: 1 ${event.primary_object_id}U ..." />
+                <input type="text" id="sgp4-primary-line2" class="form-input tle-textarea" placeholder="Line 2: 2 ${event.primary_object_id} ..." />
               </div>
 
               <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 2px;">
+                <label class="form-label" style="font-size: 11px; margin-bottom: 2px;">
                   Secondary Object (NORAD ${event.secondary_object_id}) TLE:
                 </label>
-                <input type="text" id="sgp4-secondary-line1" class="form-input" style="font-family: var(--font-mono); font-size: 11px; margin-bottom: 4px;" placeholder="Line 1: 1 ${event.secondary_object_id}U ..." />
-                <input type="text" id="sgp4-secondary-line2" class="form-input" style="font-family: var(--font-mono); font-size: 11px;" placeholder="Line 2: 2 ${event.secondary_object_id} ..." />
+                <input type="text" id="sgp4-secondary-line1" class="form-input tle-textarea" style="margin-bottom: 4px;" placeholder="Line 1: 1 ${event.secondary_object_id}U ..." />
+                <input type="text" id="sgp4-secondary-line2" class="form-input tle-textarea" placeholder="Line 2: 2 ${event.secondary_object_id} ..." />
               </div>
 
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
                 <div>
-                  <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 2px;">Nominal TCA (UTC):</label>
+                  <label class="form-label" style="font-size: 11px;">Nominal TCA (UTC):</label>
                   <input type="text" id="sgp4-nominal-tca" class="form-input" style="font-family: var(--font-mono); font-size: 11px;" value="${event.latest_tca ? new Date(event.latest_tca).toISOString() : new Date().toISOString()}" />
                 </div>
                 <div>
-                  <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 2px;">Search Window (+/- min):</label>
+                  <label class="form-label" style="font-size: 11px;">Search Window (+/- min):</label>
                   <input type="number" id="sgp4-window-minutes" class="form-input" style="font-family: var(--font-mono); font-size: 11px;" value="10" min="1" max="60" />
                 </div>
               </div>
@@ -373,15 +392,18 @@ async function loadEventDetailsData(container, eventId) {
             </div>
           </div>
 
-          <!-- Audit Ledger Records for this Event (Part 6C) -->
+          <!-- Audit Ledger Records for this Event -->
           <div class="card">
             <div class="card-header">
-              <h2 class="card-title">Event Cryptographic Audit Trail</h2>
+              <div>
+                <h2 class="card-title">Event Cryptographic Audit Trail</h2>
+                <div class="card-subtitle">Immutable append-only ledger entries anchored to this conjunction event</div>
+              </div>
               <span style="font-size: var(--text-xs); font-family: var(--font-mono); color: var(--text-muted);">
                 ${auditRecords.length} records verified
               </span>
             </div>
-            <div style="overflow-x: auto;">
+            <div class="table-wrapper">
               <table class="data-table" style="font-size: var(--text-xs);">
                 <thead>
                   <tr>
@@ -399,12 +421,15 @@ async function loadEventDetailsData(container, eventId) {
                           .map(
                             audit => `
                       <tr>
-                        <td style="font-family: var(--font-mono); font-weight: bold;">#${audit.sequence_number}</td>
+                        <td style="font-family: var(--font-mono); font-weight: bold; color: var(--text-primary);">#${audit.sequence_number}</td>
                         <td><span class="badge badge-brand">${escapeHtml(audit.action_type)}</span></td>
-                        <td>${escapeHtml(audit.actor_type)}: <strong style="font-family: var(--font-mono);">${escapeHtml(audit.actor_id)}</strong></td>
-                        <td style="font-family: var(--font-mono);">${formatUtc(audit.created_at)}</td>
-                        <td style="font-family: var(--font-mono); color: var(--text-muted);" title="${audit.entry_hash}">
-                          ${audit.entry_hash.slice(0, 16)}...
+                        <td>${escapeHtml(audit.actor_type)}: <strong style="font-family: var(--font-mono); color: var(--text-primary);">${escapeHtml(audit.actor_id)}</strong></td>
+                        <td class="tabular-nums">${formatUtc(audit.created_at)}</td>
+                        <td>
+                          <div class="hash-cell">
+                            <span title="${audit.entry_hash}">${truncateHash(audit.entry_hash, 8, 8)}</span>
+                            <button class="copy-btn btn-ghost btn-xs" data-hash="${audit.entry_hash}" title="Copy full SHA-256 hash">📋</button>
+                          </div>
                         </td>
                       </tr>
                     `,
@@ -418,12 +443,15 @@ async function loadEventDetailsData(container, eventId) {
           </div>
         </div>
 
-        <!-- Right Column: Assessment Explanation (Part 6D) & Review Workflow (Part 6E) -->
+        <!-- Right Column: Assessment Explanation & Operator Review Workflow -->
         <div class="details-sidebar-column">
-          <!-- Assessment Explanation Card (Part 6D) -->
+          <!-- Assessment Explanation Card -->
           <div class="card">
             <div class="card-header">
-              <h2 class="card-title">Review-Priority Assessment</h2>
+              <div>
+                <h2 class="card-title">Review-Priority Assessment</h2>
+                <div class="card-subtitle">Deterministic multi-factor review score</div>
+              </div>
               <span class="badge badge-neutral" style="font-size: 11px;">
                 ${latestAssessment ? escapeHtml(latestAssessment.rule_set_version) : 'v1.0.0-heuristic'}
               </span>
@@ -432,10 +460,13 @@ async function loadEventDetailsData(container, eventId) {
             ${
               latestAssessment
                 ? `
-              <div class="assessment-score-banner">
-                <div class="score-display">
-                  <span class="score-num">${latestAssessment.assessment_score}</span>
-                  <span class="score-denom">/ 100 PTS</span>
+              <div class="assessment-score-banner assessment-score-card">
+                <div>
+                  <div style="font-size: var(--text-2xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Composite Priority Score</div>
+                  <div class="score-display" style="display: flex; align-items: baseline; gap: var(--space-1); margin-top: 2px;">
+                    <span class="score-num assessment-score-num">${latestAssessment.assessment_score}</span>
+                    <span class="score-denom" style="color: var(--text-muted); font-size: var(--text-xs); font-family: var(--font-mono);">/ 100 PTS</span>
+                  </div>
                 </div>
                 <span class="badge ${getUrgencyBadgeClass(latestAssessment.urgency_level)}" style="font-size: var(--text-sm); padding: var(--space-1) var(--space-2-5);">
                   ${escapeHtml(latestAssessment.urgency_level)}
@@ -443,59 +474,59 @@ async function loadEventDetailsData(container, eventId) {
               </div>
 
               <!-- Component Scores Breakdown -->
-              <div class="component-list">
+              <div class="assessment-factors-list">
                 <!-- Miss Distance Component (50%) -->
-                <div class="component-card">
-                  <div class="component-header">
-                    <span class="component-name">Miss Distance Weight</span>
-                    <span class="component-score">${latestAssessment.component_scores.missDistance?.score || 0} / 50</span>
+                <div class="factor-item">
+                  <div class="factor-header">
+                    <span class="factor-name">Miss Distance Weight</span>
+                    <span class="factor-weight">${latestAssessment.component_scores.missDistance?.score || 0} / 50</span>
                   </div>
-                  <div class="component-bar-bg">
-                    <div class="component-bar-fill" style="width: ${((latestAssessment.component_scores.missDistance?.score || 0) / 50) * 100}%;"></div>
+                  <div class="distribution-bar-track">
+                    <div class="distribution-bar-fill" style="background: var(--color-brand); width: ${((latestAssessment.component_scores.missDistance?.score || 0) / 50) * 100}%;"></div>
                   </div>
-                  <p class="component-reason">${escapeHtml(latestAssessment.explanations.missDistance || 'Proximity evaluation')}</p>
+                  <p class="factor-reason">${escapeHtml(latestAssessment.explanations.missDistance || 'Proximity evaluation')}</p>
                 </div>
 
                 <!-- Time to TCA Component (30%) -->
-                <div class="component-card">
-                  <div class="component-header">
-                    <span class="component-name">Time to TCA Weight</span>
-                    <span class="component-score">${latestAssessment.component_scores.timeToTca?.score || 0} / 30</span>
+                <div class="factor-item">
+                  <div class="factor-header">
+                    <span class="factor-name">Time to TCA Weight</span>
+                    <span class="factor-weight">${latestAssessment.component_scores.timeToTca?.score || 0} / 30</span>
                   </div>
-                  <div class="component-bar-bg">
-                    <div class="component-bar-fill" style="width: ${((latestAssessment.component_scores.timeToTca?.score || 0) / 30) * 100}%;"></div>
+                  <div class="distribution-bar-track">
+                    <div class="distribution-bar-fill" style="background: var(--color-brand); width: ${((latestAssessment.component_scores.timeToTca?.score || 0) / 30) * 100}%;"></div>
                   </div>
-                  <p class="component-reason">${escapeHtml(latestAssessment.explanations.timeToTca || 'Encounter lead time')}</p>
+                  <p class="factor-reason">${escapeHtml(latestAssessment.explanations.timeToTca || 'Encounter lead time')}</p>
                 </div>
 
                 <!-- Probability Metric Component (15%) -->
-                <div class="component-card">
-                  <div class="component-header">
-                    <span class="component-name">Screening Max Probability</span>
-                    <span class="component-score">${latestAssessment.component_scores.probability?.score || 0} / 15</span>
+                <div class="factor-item">
+                  <div class="factor-header">
+                    <span class="factor-name">Screening Max Probability</span>
+                    <span class="factor-weight">${latestAssessment.component_scores.probability?.score || 0} / 15</span>
                   </div>
-                  <div class="component-bar-bg">
-                    <div class="component-bar-fill" style="width: ${((latestAssessment.component_scores.probability?.score || 0) / 15) * 100}%;"></div>
+                  <div class="distribution-bar-track">
+                    <div class="distribution-bar-fill" style="background: var(--color-brand); width: ${((latestAssessment.component_scores.probability?.score || 0) / 15) * 100}%;"></div>
                   </div>
-                  <p class="component-reason">${escapeHtml(latestAssessment.explanations.probability || 'Upper-bound catalog metric')}</p>
+                  <p class="factor-reason">${escapeHtml(latestAssessment.explanations.probability || 'Upper-bound catalog metric')}</p>
                 </div>
 
                 <!-- Data Freshness Component (5%) -->
-                <div class="component-card">
-                  <div class="component-header">
-                    <span class="component-name">TLE Data Freshness</span>
-                    <span class="component-score">${latestAssessment.component_scores.dataFreshness?.score || 0} / 5</span>
+                <div class="factor-item">
+                  <div class="factor-header">
+                    <span class="factor-name">TLE Data Freshness</span>
+                    <span class="factor-weight">${latestAssessment.component_scores.dataFreshness?.score || 0} / 5</span>
                   </div>
-                  <div class="component-bar-bg">
-                    <div class="component-bar-fill" style="width: ${((latestAssessment.component_scores.dataFreshness?.score || 0) / 5) * 100}%;"></div>
+                  <div class="distribution-bar-track">
+                    <div class="distribution-bar-fill" style="background: var(--color-brand); width: ${((latestAssessment.component_scores.dataFreshness?.score || 0) / 5) * 100}%;"></div>
                   </div>
-                  <p class="component-reason">${escapeHtml(latestAssessment.explanations.dataFreshness || 'Epoch propagation uncertainty')}</p>
+                  <p class="factor-reason">${escapeHtml(latestAssessment.explanations.dataFreshness || 'Epoch propagation uncertainty')}</p>
                 </div>
               </div>
 
               <!-- Scientific Limitation Disclaimer -->
-              <div class="scientific-disclaimer" style="margin-top: var(--space-4);">
-                <span class="disclaimer-icon">ℹ</span>
+              <div class="methodology-notice" style="margin-top: var(--space-4);">
+                <span>ℹ</span>
                 <div>
                   <strong>Scientific Methodology Notice:</strong> The score above is an explainable review-priority heuristic
                   designed for operational triage, not an authoritative collision probability or maneuver recommendation.
@@ -507,10 +538,13 @@ async function loadEventDetailsData(container, eventId) {
             }
           </div>
 
-          <!-- Operator Review Workflow (Part 6E) -->
+          <!-- Operator Review Workflow -->
           <div class="card">
             <div class="card-header">
-              <h2 class="card-title">Operator Review Decision</h2>
+              <div>
+                <h2 class="card-title">Operator Review Decision</h2>
+                <div class="card-subtitle">Auditable human-in-the-loop operational adjudication</div>
+              </div>
               <span class="badge ${getReviewBadgeClass(event.review_status)}">${escapeHtml(event.review_status)}</span>
             </div>
 
@@ -518,7 +552,7 @@ async function loadEventDetailsData(container, eventId) {
             <form id="review-action-form" style="display: flex; flex-direction: column; gap: var(--space-3);">
               <div class="form-group">
                 <label class="form-label" for="review-action-select">Review Action</label>
-                <select id="review-action-select" class="select-input" required>
+                <select id="review-action-select" class="form-select" required>
                   <option value="ACKNOWLEDGE">ACKNOWLEDGE (Under Active Monitoring)</option>
                   <option value="ESCALATE">ESCALATE (Escalate for Manoeuvre Screening)</option>
                   <option value="DISMISS">DISMISS (No Conjunction Threat)</option>
@@ -528,14 +562,14 @@ async function loadEventDetailsData(container, eventId) {
 
               <div class="form-group">
                 <label class="form-label" for="review-justification">
-                  Technical Justification <span style="color: var(--color-critical);">*</span>
-                  <span id="char-counter" style="font-family: var(--font-mono); font-size: 11px; float: right; color: var(--text-muted);">
+                  <span>Technical Justification <span class="req">*</span></span>
+                  <span id="char-counter" class="review-char-counter">
                     0 / 10 min chars
                   </span>
                 </label>
                 <textarea
                   id="review-justification"
-                  class="textarea-input"
+                  class="form-textarea"
                   rows="3"
                   placeholder="Provide a mandatory technical justification (minimum 10 characters)..."
                   required
@@ -549,11 +583,11 @@ async function loadEventDetailsData(container, eventId) {
                   <input
                     type="password"
                     id="input-operator-key"
-                    class="input-text"
+                    class="form-input"
                     placeholder="Enter operator API key..."
                     value="${state.get('operatorApiKey') || ''}"
                   />
-                  <span style="font-size: 11px; color: var(--text-muted);">
+                  <span class="form-hint">
                     Key is held in transient memory only; never stored on disk.
                   </span>
                 </div>
@@ -571,20 +605,20 @@ async function loadEventDetailsData(container, eventId) {
               <h3 style="font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3);">
                 Historical Operator Decisions
               </h3>
-              <div id="reviews-history-stream" style="display: flex; flex-direction: column; gap: var(--space-2);">
+              <div id="reviews-history-stream" class="review-history-list">
                 ${
                   latestReview
                     ? `
-                  <div style="background-color: var(--bg-surface-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: var(--space-3);">
+                  <div class="review-history-item">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-1);">
                       <span class="badge ${getReviewBadgeClass(latestReview.new_review_status)}">${escapeHtml(latestReview.action)}</span>
-                      <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">${formatUtc(latestReview.created_at)}</span>
+                      <span class="tabular-nums" style="font-size: 11px; color: var(--text-muted);">${formatUtc(latestReview.created_at)}</span>
                     </div>
                     <div style="font-size: var(--text-xs); color: var(--text-primary); margin-bottom: var(--space-1); font-style: italic;">
                       "${escapeHtml(latestReview.justification)}"
                     </div>
                     <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">
-                      Operator: ${escapeHtml(latestReview.actor_id)} | ${escapeHtml(latestReview.previous_review_status)} → ${escapeHtml(latestReview.new_review_status)}
+                      Operator: <strong style="color: var(--text-secondary);">${escapeHtml(latestReview.actor_id)}</strong> | ${escapeHtml(latestReview.previous_review_status)} → ${escapeHtml(latestReview.new_review_status)}
                     </div>
                   </div>
                 `
@@ -597,6 +631,16 @@ async function loadEventDetailsData(container, eventId) {
       </div>
     `;
 
+    // Copy buttons for audit trail
+    contentEl.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const hash = btn.getAttribute('data-hash');
+        if (hash) {
+          copyToClipboard(hash, 'Audit Entry Hash');
+        }
+      });
+    });
+
     // Character counter for justification
     const justEl = contentEl.querySelector('#review-justification');
     const counterEl = contentEl.querySelector('#char-counter');
@@ -605,9 +649,9 @@ async function loadEventDetailsData(container, eventId) {
         const len = justEl.value.trim().length;
         counterEl.textContent = `${len} / 10 min chars`;
         if (len >= 10) {
-          counterEl.style.color = 'var(--color-success)';
+          counterEl.classList.add('valid');
         } else {
-          counterEl.style.color = 'var(--color-critical)';
+          counterEl.classList.remove('valid');
         }
       });
     }
@@ -624,7 +668,7 @@ async function loadEventDetailsData(container, eventId) {
       }
     });
 
-    // Review form submission handler (Part 6E)
+    // Review form submission handler
     const reviewForm = contentEl.querySelector('#review-action-form');
     reviewForm?.addEventListener('submit', async e => {
       e.preventDefault();
@@ -671,7 +715,7 @@ async function loadEventDetailsData(container, eventId) {
       if (feedbackEl) feedbackEl.style.display = 'none';
 
       try {
-        const reviewRes = await api.postReview(eventId, {
+        await api.postReview(eventId, {
           action,
           justification,
           actorId: state.get('operatorActorId') || 'flight-operator',
@@ -695,7 +739,6 @@ async function loadEventDetailsData(container, eventId) {
           feedbackEl.textContent = `Submission failed: ${err.message}`;
         }
 
-        // If unauthorized, prompt for key
         if (err.status === 401 || err.status === 403) {
           contentEl.querySelector('#operator-key-prompt-wrapper').style.display = 'block';
           state.clearOperatorAuth();
@@ -703,7 +746,7 @@ async function loadEventDetailsData(container, eventId) {
       }
     });
 
-    // SGP4 Screening Form Handling (Phase 8)
+    // SGP4 Screening Form Handling
     const sgp4Form = contentEl.querySelector('#sgp4-screening-form');
     const btnLoadTle = contentEl.querySelector('#btn-load-sample-tles');
     const sgp4Feedback = contentEl.querySelector('#sgp4-feedback');
@@ -778,8 +821,8 @@ async function loadEventDetailsData(container, eventId) {
         if (resultsContainer) {
           resultsContainer.innerHTML =
             `
-            <div style="background-color: var(--bg-surface-2); border: 1px solid var(--color-brand); border-radius: var(--radius-xs); padding: var(--space-3); margin-bottom: var(--space-3);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+            <div class="sgp4-result-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2); flex-wrap: wrap; gap: var(--space-2);">
                 <div style="display: flex; align-items: center; gap: var(--space-2);">
                   <span class="badge badge-success" style="font-size: 10px;">LATEST SCREENING RESULT</span>
                   <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">${formatUtc(est.estimatedTca)}</span>
@@ -788,10 +831,10 @@ async function loadEventDetailsData(container, eventId) {
                   Δt from TCA: ${est.tcaDeltaSeconds > 0 ? '+' : ''}${est.tcaDeltaSeconds}s
                 </span>
               </div>
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-2); font-size: var(--text-xs);">
+              <div class="sgp4-result-grid">
                 <div>
                   <span style="color: var(--text-muted); font-size: 10px; display: block;">SGP4 Miss Distance:</span>
-                  <strong style="font-family: var(--font-mono); font-size: var(--text-sm); color: ${est.estimatedMissDistanceKm < 5.0 ? 'var(--color-critical)' : 'var(--text-primary)'};">
+                  <strong style="font-family: var(--font-mono); font-size: var(--text-sm); color: ${est.estimatedMissDistanceKm < 1.0 ? 'var(--color-critical)' : est.estimatedMissDistanceKm < 5.0 ? 'var(--color-high)' : 'var(--text-primary)'};">
                     ${formatDistance(est.estimatedMissDistanceKm)}
                   </strong>
                 </div>
@@ -812,7 +855,8 @@ async function loadEventDetailsData(container, eventId) {
                   <span style="font-family: var(--font-mono);">${est.secondaryObject.tleAgeHours}h</span>
                 </div>
               </div>
-              ${est.persisted ? `<div style="margin-top: var(--space-2); font-size: 10px; font-family: var(--font-mono); color: var(--color-success);">✓ Persisted to orbital_screenings & appended to cryptographic audit ledger.</div>` : ''}
+              ${renderEncounterProfileChart(est)}
+              ${est.persisted ? `<div style="margin-top: var(--space-2); font-size: 11px; font-family: var(--font-mono); color: var(--color-success);">✓ Persisted to orbital_screenings & appended to cryptographic audit ledger.</div>` : ''}
             </div>
           ` + resultsContainer.innerHTML;
         }

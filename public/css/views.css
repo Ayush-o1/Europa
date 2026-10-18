@@ -1,18 +1,156 @@
 /**
  * Europa View-Specific Styles
- * Detailed styles for Event Inspection, Assessment Breakdown, Observation Timeline,
- * SVG Charts, Ingestion Dropzone, and Cryptographic Audit Verification.
+ * Detailed styles for Overview Dashboard, Event Triage Queue, Event Inspection & Evolution,
+ * Experimental SGP4 Screening Workbench, Ingestion Console, and Cryptographic Audit Verification.
  */
 
-/* Event Details Layout */
+/* =========================================================================
+   1. OVERVIEW DASHBOARD
+   ========================================================================= */
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+@media (max-width: 1024px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Urgency Distribution Bar */
+.distribution-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.distribution-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.distribution-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+}
+
+.distribution-bar-track {
+  height: 6px;
+  background-color: var(--bg-surface-2);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  position: relative;
+}
+
+.distribution-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 0.4s ease-out;
+}
+
+/* Ingestion Summary Card */
+.ingestion-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.ingestion-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  background-color: var(--bg-surface-2);
+  padding: var(--space-2-5) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.ingestion-summary-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ingestion-summary-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* =========================================================================
+   2. EVENT TRIAGE QUEUE
+   ========================================================================= */
+
+.triage-filters-card {
+  margin-bottom: var(--space-5);
+}
+
+.triage-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.triage-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Active filter count indicator */
+.filter-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* Miss Distance Range Bar in Table Cell */
+.range-indicator-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+}
+
+.range-mini-track {
+  width: 60px;
+  height: 3px;
+  background-color: var(--bg-surface-3);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.range-mini-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+}
+
+/* =========================================================================
+   3. EVENT DETAILS & HISTORY
+   ========================================================================= */
+
 .event-details-layout {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 390px;
   gap: var(--space-6);
   align-items: start;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1120px) {
   .event-details-layout {
     grid-template-columns: 1fr;
   }
@@ -22,6 +160,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  min-width: 0;
 }
 
 .details-sidebar-column {
@@ -30,7 +169,7 @@
   gap: var(--space-6);
 }
 
-/* Object Pair Banner */
+/* Encounter Hero Banner */
 .encounter-banner {
   background-color: var(--bg-surface-1);
   border: 1px solid var(--border-subtle);
@@ -73,9 +212,47 @@
 
 .encounter-vs {
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 700;
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+}
+
+/* SVG Chart Container & Tooltip */
+.chart-container {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-surface-0);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+.chart-svg {
+  width: 100%;
+  height: 220px;
+  overflow: visible;
+}
+
+.chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xs);
+  padding: var(--space-1-5) var(--space-2-5);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
+  white-space: nowrap;
 }
 
 /* Observation Timeline */
@@ -89,8 +266,8 @@
 .timeline::before {
   content: '';
   position: absolute;
-  top: 10px;
-  bottom: 10px;
+  top: 14px;
+  bottom: 14px;
   left: 15px;
   width: 2px;
   background-color: var(--border-subtle);
@@ -124,6 +301,7 @@
   border-color: var(--color-brand);
   background-color: rgba(99, 102, 241, 0.2);
   color: #fff;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
 }
 
 .timeline-content {
@@ -132,6 +310,7 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: var(--space-3) var(--space-4);
+  min-width: 0;
 }
 
 .timeline-header {
@@ -140,253 +319,303 @@
   justify-content: space-between;
   margin-bottom: var(--space-2);
   font-size: var(--text-xs);
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .timeline-timestamp {
   font-family: var(--font-mono);
   color: var(--text-secondary);
+  font-size: 11px;
 }
 
 .timeline-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: var(--space-2);
+  gap: var(--space-3);
   font-size: var(--text-xs);
+  margin-bottom: var(--space-2);
 }
 
-.timeline-metric-label {
+.timeline-prop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+}
+
+.timeline-label {
+  font-size: 10px;
   color: var(--text-muted);
-  display: block;
+  text-transform: uppercase;
 }
 
-.timeline-metric-val {
+.timeline-value {
   font-family: var(--font-mono);
   font-weight: 600;
   color: var(--text-primary);
 }
 
-/* SVG Chart Container */
-.chart-card {
-  background-color: var(--bg-surface-1);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-}
-
-.chart-wrapper {
-  width: 100%;
-  height: 180px;
-  position: relative;
-  overflow: hidden;
-}
-
-.svg-chart {
-  width: 100%;
-  height: 100%;
-}
-
-.chart-tooltip {
-  position: absolute;
-  background-color: var(--bg-surface-3);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-xs);
-  padding: var(--space-1) var(--space-2);
+.timeline-source {
   font-size: 11px;
   font-family: var(--font-mono);
-  color: var(--text-primary);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 100ms;
-  z-index: 10;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-1-5);
+  word-break: break-all;
 }
 
-/* Assessment Component Breakdown Cards */
-.assessment-score-banner {
+/* Assessment Breakdown Components */
+.assessment-score-card {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   padding: var(--space-4);
   background-color: var(--bg-surface-2);
-  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   margin-bottom: var(--space-4);
 }
 
-.score-display {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.score-num {
-  font-size: 2.25rem;
+.assessment-score-num {
+  font-size: var(--text-3xl);
   font-weight: 800;
   font-family: var(--font-mono);
   color: var(--text-primary);
   line-height: 1;
 }
 
-.score-denom {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-}
-
-.component-list {
+.assessment-factors-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
-.component-card {
+.factor-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   background-color: var(--bg-surface-2);
-  border: 1px solid var(--border-subtle);
+  padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-sm);
-  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
 }
 
-.component-header {
+.factor-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-1);
+  font-size: var(--text-xs);
 }
 
-.component-name {
-  font-size: var(--text-sm);
+.factor-name {
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.component-score {
+.factor-weight {
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.component-bar-bg {
-  width: 100%;
-  height: 4px;
-  background-color: var(--border-subtle);
-  border-radius: 2px;
-  margin: var(--space-1-5) 0;
-  overflow: hidden;
-}
-
-.component-bar-fill {
-  height: 100%;
-  background-color: var(--color-brand);
-  border-radius: 2px;
-}
-
-.component-reason {
-  font-size: var(--text-xs);
+  font-size: 11px;
   color: var(--text-secondary);
+}
+
+.factor-reason {
+  font-size: 11px;
+  color: var(--text-muted);
   line-height: 1.4;
 }
 
-/* Scientific Limitation Disclaimer */
-.scientific-disclaimer {
+/* Scientific Methodology Notice Box */
+.methodology-notice {
   background-color: rgba(99, 102, 241, 0.05);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.25);
   border-radius: var(--radius-sm);
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--text-xs);
-  color: #c7d2fe;
+  padding: var(--space-3) var(--space-3-5);
+  font-size: 11px;
   line-height: 1.5;
+  color: var(--text-secondary);
   display: flex;
-  gap: var(--space-3);
-  align-items: flex-start;
+  gap: var(--space-2-5);
 }
 
-.disclaimer-icon {
-  flex-shrink: 0;
-  font-size: var(--text-md);
-  margin-top: 1px;
-}
-
-/* Dropzone for Ingestion */
-.dropzone {
-  border: 2px dashed var(--border-medium);
-  border-radius: var(--radius-md);
-  padding: var(--space-8) var(--space-4);
-  text-align: center;
-  background-color: var(--bg-surface-2);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-}
-
-.dropzone:hover,
-.dropzone.dragover {
-  border-color: var(--color-brand);
-  background-color: rgba(99, 102, 241, 0.05);
-}
-
-.dropzone-icon {
-  font-size: 2rem;
-  color: var(--text-muted);
-}
-
-.dropzone-title {
-  font-size: var(--text-md);
-  font-weight: 600;
+.methodology-notice strong {
   color: var(--text-primary);
 }
 
-.dropzone-sub {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
+/* Operator Review Form */
+.review-char-counter {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
 }
 
-/* Audit Verification Banner */
-.verification-card {
+.review-char-counter.valid {
+  color: var(--color-success);
+}
+
+.review-history-list {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-5);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-6);
+  flex-direction: column;
+  gap: var(--space-2-5);
+  margin-top: var(--space-3);
 }
 
-.verification-card.verified {
-  background-color: var(--color-success-bg);
-  border: 1px solid var(--color-success-border);
-}
-
-.verification-card.failed {
-  background-color: var(--color-critical-bg);
-  border: 1px solid var(--color-critical-border);
-}
-
-.verification-status-group {
+.review-history-item {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2-5) var(--space-3);
+  font-size: var(--text-xs);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
 
-.verification-title {
-  font-size: var(--text-lg);
-  font-weight: 700;
+/* =========================================================================
+   4. EXPERIMENTAL SGP4 SCREENING
+   ========================================================================= */
+
+.sgp4-banner {
+  background-color: rgba(234, 179, 8, 0.06);
+  border: 1px solid rgba(234, 179, 8, 0.28);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.tle-textarea {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.03em;
+  white-space: pre;
+  overflow-x: auto;
+  resize: vertical;
+}
+
+.sgp4-result-card {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--color-brand);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.15);
+}
+
+.sgp4-result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  margin-top: var(--space-3);
+}
+
+/* =========================================================================
+   5. INGESTION WORKFLOW
+   ========================================================================= */
+
+.dropzone-container {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--space-5);
+}
+
+@media (max-width: 960px) {
+  .dropzone-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dropzone {
+  border: 2px dashed var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: var(--space-8) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  background-color: var(--bg-surface-0);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.dropzone:hover,
+.dropzone.dragover {
+  border-color: var(--color-brand);
+  background-color: rgba(99, 102, 241, 0.04);
+}
+
+.dropzone-icon {
+  font-size: 36px;
+  color: var(--text-muted);
+}
+
+.outcome-panel {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+  animation: slideUp var(--transition-fast) ease-out;
+}
+
+.outcome-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+/* =========================================================================
+   6. CRYPTOGRAPHIC AUDIT VERIFICATION
+   ========================================================================= */
+
+.verification-card {
+  background-color: var(--bg-surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.verification-card.valid {
+  border-color: var(--color-success-border);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.04) 0%, var(--bg-surface-1) 100%);
+}
+
+.verification-card.tampered {
+  border-color: var(--color-critical-border);
+  background: linear-gradient(180deg, rgba(244, 63, 94, 0.04) 0%, var(--bg-surface-1) 100%);
+}
+
+.verification-header {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
 
-.verified .verification-title {
-  color: var(--color-success);
-}
-.failed .verification-title {
-  color: var(--color-critical);
-}
-
-.verification-details {
-  font-size: var(--text-xs);
+.hash-cell {
   font-family: var(--font-mono);
+  font-size: 11px;
   color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.copy-btn {
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  opacity: 1;
 }

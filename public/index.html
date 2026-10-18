@@ -43,6 +43,15 @@
         </button>
         <button
           class="nav-tab"
+          data-view="propagation"
+          role="tab"
+          aria-selected="false"
+          id="tab-propagation"
+        >
+          Orbital Screening
+        </button>
+        <button
+          class="nav-tab"
           data-view="ingestion"
           role="tab"
           aria-selected="false"
@@ -55,8 +64,17 @@
         </button>
       </nav>
 
-      <!-- System Readiness and Operator Auth Controls -->
+      <!-- System Readiness, UTC Clock, and Operator Auth Controls -->
       <div class="header-actions">
+        <div
+          class="live-clock-indicator"
+          id="live-utc-clock"
+          title="Current Coordinated Universal Time"
+        >
+          <span class="live-clock-label">UTC</span>
+          <span id="utc-time-display">--:--:--</span>
+        </div>
+
         <div class="system-status" id="system-status-indicator" title="Database Connection Status">
           <span class="status-dot" id="system-status-dot"></span>
           <span id="system-status-text">Checking...</span>
@@ -75,6 +93,14 @@
 
     <!-- Main Content Container -->
     <main class="app-main" id="main-content">
+      <!-- Breadcrumb Bar -->
+      <nav
+        id="breadcrumb-root"
+        class="breadcrumb-bar"
+        aria-label="Breadcrumb"
+        style="display: none"
+      ></nav>
+
       <div id="view-content-root" class="view-root">
         <!-- Views are dynamically rendered here -->
       </div>

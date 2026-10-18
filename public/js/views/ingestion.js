@@ -1,5 +1,5 @@
 /**
- * @fileoverview Part 6F: Snapshot Ingestion & Ingestion History View
+ * @fileoverview Snapshot Ingestion & Ingestion History View
  *
  * Implements CelesTrak SOCRATES CSV snapshot uploading with drag-and-drop,
  * duplicate detection feedback, processing statistics, and batch provenance queries.
@@ -8,21 +8,21 @@
 import { api } from '../apiClient.js';
 import { state } from '../state.js';
 import { showToast } from '../components/toast.js';
-import { escapeHtml, formatUtc } from '../utils.js';
+import { escapeHtml, formatUtc, truncateHash, copyToClipboard } from '../utils.js';
 
 let currentBatchesPage = 1;
 
 export async function renderIngestion(container) {
   container.innerHTML = `
     <div class="view-header">
-      <div class="view-title-group">
-        <h1>SOCRATES Snapshot Ingestion</h1>
-        <p class="view-description">
+      <div class="view-header-main">
+        <h1 class="view-title">SOCRATES Snapshot Ingestion</h1>
+        <p class="view-desc">
           Upload CelesTrak SOCRATES conjunction screening CSV files to execute atomic parsing,
           deduplication, correlation into encounter events, and priority assessment.
         </p>
       </div>
-      <div class="header-action-group">
+      <div class="view-actions">
         <button id="btn-refresh-ingestion" class="btn btn-secondary btn-sm">↻ Refresh Batches</button>
       </div>
     </div>
@@ -30,23 +30,33 @@ export async function renderIngestion(container) {
     <!-- Upload Card -->
     <div class="card" style="margin-bottom: var(--space-6);">
       <div class="card-header">
-        <h2 class="card-title">Upload Conjunction Screening Snapshot</h2>
-        <span class="badge badge-brand">SOCRATES CSV | Max 10MB</span>
+        <div>
+          <h2 class="card-title">Upload Conjunction Screening Snapshot</h2>
+          <div class="card-subtitle">Select or drop a raw CSV snapshot from CelesTrak SOCRATES</div>
+        </div>
+        <span class="badge badge-brand">SOCRATES CSV | MAX 10MB</span>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 340px; gap: var(--space-6); align-items: start;">
+      <div class="dropzone-container">
         <!-- Left: Dropzone -->
         <div>
           <div id="csv-dropzone" class="dropzone">
             <div class="dropzone-icon">📁</div>
-            <div class="dropzone-title">Drag & drop SOCRATES CSV snapshot here</div>
-            <div class="dropzone-sub">or click to browse local files (must be valid .csv, up to 10MB)</div>
+            <div style="font-weight: 700; font-size: var(--text-md); color: var(--text-primary);">
+              Drag &amp; drop SOCRATES CSV snapshot here
+            </div>
+            <div style="font-size: var(--text-xs); color: var(--text-secondary);">
+              or click to browse local files (must be valid .csv, up to 10MB)
+            </div>
             <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display: none;" />
           </div>
 
-          <div id="selected-file-info" style="display: none; margin-top: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--bg-surface-2); border-radius: var(--radius-sm); font-size: var(--text-xs); font-family: var(--font-mono); justify-content: space-between; align-items: center;">
-            <span id="file-name-display" style="color: var(--text-primary);">filename.csv</span>
-            <button id="btn-clear-file" class="btn btn-secondary btn-sm" style="padding: 2px 6px;">Clear</button>
+          <div id="selected-file-info" style="display: none; margin-top: var(--space-3); padding: var(--space-2-5) var(--space-4); background: var(--bg-surface-2); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-size: var(--text-xs); font-family: var(--font-mono); justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <span>📄</span>
+              <span id="file-name-display" style="color: var(--text-primary); font-weight: 600;">filename.csv</span>
+            </div>
+            <button id="btn-clear-file" class="btn btn-secondary btn-xs">Clear</button>
           </div>
         </div>
 
@@ -54,7 +64,7 @@ export async function renderIngestion(container) {
         <div style="display: flex; flex-direction: column; gap: var(--space-3); background-color: var(--bg-surface-2); padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
           <div class="form-group">
             <label class="form-label" for="select-screening-scope">Screening Scope</label>
-            <select id="select-screening-scope" class="select-input">
+            <select id="select-screening-scope" class="form-select">
               <option value="FULL_CATALOG_MINRANGE">FULL_CATALOG_MINRANGE (Standard SOCRATES)</option>
               <option value="FILTERED_QUERY">FILTERED_QUERY (Satellite Sub-filter)</option>
               <option value="LOCAL_FIXTURE">LOCAL_FIXTURE (Test / Scenario Dataset)</option>
@@ -66,22 +76,22 @@ export async function renderIngestion(container) {
             <input
               type="password"
               id="input-upload-operator-key"
-              class="input-text"
+              class="form-input"
               placeholder="Enter operator API key..."
               value="${state.get('operatorApiKey') || ''}"
             />
-            <span style="font-size: 11px; color: var(--text-muted);">
-              Write operations require operator authorization. Default dev key is <code style="color: #cbd5e1;">europa-dev-key</code>.
+            <span class="form-hint">
+              Write operations require operator authorization. Default dev key is <code style="color: var(--text-primary);">europa-dev-key</code>.
             </span>
           </div>
 
           <button id="btn-upload-submit" class="btn btn-primary" style="margin-top: var(--space-2);" disabled>
-            Upload & Ingest Snapshot
+            Upload &amp; Ingest Snapshot
           </button>
 
           <!-- 1-Click Sample Fixture Loader -->
           <div style="margin-top: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); text-align: center;">
-            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: var(--space-1);">
+            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: var(--space-1-5);">
               Testing or demonstration?
             </span>
             <button id="btn-load-sample-fixture" class="btn btn-secondary btn-sm" style="width: 100%;">
@@ -96,9 +106,12 @@ export async function renderIngestion(container) {
     </div>
 
     <!-- Ingestion Batches History -->
-    <div class="table-container">
-      <div class="table-toolbar">
-        <h2 class="card-title">Provenance Ledger: Ingestion Batches</h2>
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <div class="card-header" style="padding: var(--space-4) var(--space-5); margin-bottom: 0;">
+        <div>
+          <h2 class="card-title">Provenance Ledger: Ingestion Batches</h2>
+          <div class="card-subtitle">Immutable audit record of ingested snapshot files and cryptographic hashes</div>
+        </div>
         <span style="font-size: var(--text-xs); color: var(--text-muted);">Immutable audit of processed files</span>
       </div>
       <div id="batches-table-wrapper">
@@ -143,40 +156,49 @@ function setupUploadInteractions(container) {
     e.preventDefault();
     dropzone.classList.remove('dragover');
     if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-      handleFileSelected(e.dataTransfer.files[0]);
+      handleSelectedFile(e.dataTransfer.files[0]);
     }
   });
 
   fileInput?.addEventListener('change', () => {
     if (fileInput.files && fileInput.files.length > 0) {
-      handleFileSelected(fileInput.files[0]);
+      handleSelectedFile(fileInput.files[0]);
     }
   });
 
-  function handleFileSelected(file) {
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      showToast('Only CSV files (.csv) are accepted.', 'error');
+  function handleSelectedFile(file) {
+    if (!file.name.endsWith('.csv') && file.type !== 'text/csv' && file.type !== '') {
+      showToast('Selected file must be a valid CSV file.', 'warning');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('File size exceeds the 10MB limit.', 'error');
-      return;
-    }
-
     selectedFile = file;
-    fileNameDisplay.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-    selectedFileInfo.style.display = 'flex';
-    btnSubmit.disabled = false;
+    if (fileNameDisplay) fileNameDisplay.textContent = file.name;
+    if (selectedFileInfo) selectedFileInfo.style.display = 'flex';
+    if (btnSubmit) btnSubmit.disabled = false;
   }
 
-  btnClearFile?.addEventListener('click', () => {
+  btnClearFile?.addEventListener('click', e => {
+    e.stopPropagation();
     selectedFile = null;
     if (fileInput) fileInput.value = '';
-    selectedFileInfo.style.display = 'none';
-    btnSubmit.disabled = true;
+    if (selectedFileInfo) selectedFileInfo.style.display = 'none';
+    if (btnSubmit) btnSubmit.disabled = true;
   });
 
-  // Submit button
+  // Keep operator key in state if typed
+  keyInput?.addEventListener('input', () => {
+    if (keyInput.value.trim()) {
+      state.set('operatorApiKey', keyInput.value.trim());
+    }
+  });
+
+  state.subscribe('operatorApiKey', key => {
+    if (keyInput && key && !keyInput.value) {
+      keyInput.value = key;
+    }
+  });
+
+  // Submit Upload
   btnSubmit?.addEventListener('click', async () => {
     if (!selectedFile) return;
 
@@ -185,18 +207,17 @@ function setupUploadInteractions(container) {
     }
 
     if (!state.hasOperatorAuth()) {
-      showToast('Operator API Key required for snapshot ingestion.', 'error');
-      keyInput.focus();
+      showToast('Operator API Key required to ingest snapshots.', 'warning');
+      keyInput?.focus();
       return;
     }
 
     btnSubmit.disabled = true;
-    btnSubmit.textContent = 'Processing snapshot...';
-    outcomePanel.style.display = 'none';
+    btnSubmit.textContent = 'Processing Snapshot...';
 
     const formData = new FormData();
     formData.append('file', selectedFile);
-    formData.append('screeningScope', scopeSelect?.value || 'LOCAL_FIXTURE');
+    formData.append('screeningScope', scopeSelect?.value || 'FULL_CATALOG_MINRANGE');
     if (selectedFile.lastModified) {
       formData.append('capturedAt', new Date(selectedFile.lastModified).toISOString());
     }
@@ -269,7 +290,7 @@ function displayIngestionOutcome(panel, data) {
   const isDupe = data.isDuplicate;
 
   panel.innerHTML = `
-    <div class="card" style="border-left: 4px solid ${isDupe ? 'var(--color-medium)' : 'var(--color-success)'};">
+    <div class="card outcome-panel" style="border-left: 4px solid ${isDupe ? 'var(--color-medium)' : 'var(--color-success)'};">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); flex-wrap: wrap; gap: var(--space-2);">
         <div style="display: flex; align-items: center; gap: var(--space-2);">
           <span style="font-weight: 700; font-size: var(--text-md); color: ${isDupe ? 'var(--color-medium)' : 'var(--color-success)'};">
@@ -280,33 +301,33 @@ function displayIngestionOutcome(panel, data) {
         <button id="btn-view-queue-after-upload" class="btn btn-primary btn-sm">Inspect Correlated Events →</button>
       </div>
 
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); font-size: var(--text-xs); font-family: var(--font-mono);">
-        <div>
-          <span style="color: var(--text-muted); display: block;">Batch UUID:</span>
-          <strong>${escapeHtml(data.batchId)}</strong>
+      <div class="outcome-grid">
+        <div class="ingestion-summary-item">
+          <span class="ingestion-summary-label">Batch UUID:</span>
+          <strong class="ingestion-summary-value truncate" title="${data.batchId}">${escapeHtml(data.batchId)}</strong>
         </div>
-        <div>
-          <span style="color: var(--text-muted); display: block;">Total Rows:</span>
-          <strong>${data.rowCount}</strong>
+        <div class="ingestion-summary-item">
+          <span class="ingestion-summary-label">Total Rows:</span>
+          <strong class="ingestion-summary-value">${data.rowCount}</strong>
         </div>
-        <div>
-          <span style="color: var(--text-muted); display: block;">Valid Observations:</span>
-          <strong style="color: var(--color-success);">${data.validCount}</strong>
+        <div class="ingestion-summary-item">
+          <span class="ingestion-summary-label">Valid Observations:</span>
+          <strong class="ingestion-summary-value" style="color: var(--color-success);">${data.validCount}</strong>
         </div>
-        <div>
-          <span style="color: var(--text-muted); display: block;">Validation Errors:</span>
-          <strong style="color: ${data.errorCount > 0 ? 'var(--color-critical)' : 'var(--text-muted)'};">${data.errorCount}</strong>
+        <div class="ingestion-summary-item">
+          <span class="ingestion-summary-label">Validation Errors:</span>
+          <strong class="ingestion-summary-value" style="color: ${data.errorCount > 0 ? 'var(--color-critical)' : 'var(--text-muted)'};">${data.errorCount}</strong>
         </div>
       </div>
 
       ${
         data.correlation
           ? `
-        <div style="margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); font-size: var(--text-xs); display: flex; gap: var(--space-4); flex-wrap: wrap;">
-          <span>Events Created: <strong>${data.correlation.eventsCreated}</strong></span>
-          <span>Events Matched: <strong>${data.correlation.eventsMatched}</strong></span>
-          <span>Confirmations: <strong>${data.correlation.confirmations}</strong></span>
-          <span>Ambiguities: <strong>${data.correlation.ambiguousMatches}</strong></span>
+        <div style="margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); font-size: var(--text-xs); display: flex; gap: var(--space-4); flex-wrap: wrap; color: var(--text-secondary);">
+          <span>Events Created: <strong style="color: var(--text-primary); font-family: var(--font-mono);">${data.correlation.eventsCreated}</strong></span>
+          <span>Events Matched: <strong style="color: var(--text-primary); font-family: var(--font-mono);">${data.correlation.eventsMatched}</strong></span>
+          <span>Confirmations: <strong style="color: var(--text-primary); font-family: var(--font-mono);">${data.correlation.confirmations}</strong></span>
+          <span>Ambiguities: <strong style="color: var(--text-primary); font-family: var(--font-mono);">${data.correlation.ambiguousMatches}</strong></span>
         </div>
       `
           : ''
@@ -343,7 +364,7 @@ async function loadBatchesTable(container) {
     }
 
     wrapper.innerHTML = `
-      <div style="overflow-x: auto;">
+      <div class="table-wrapper" style="border: none; border-radius: 0;">
         <table class="data-table" style="font-size: var(--text-xs);">
           <thead>
             <tr>
@@ -361,23 +382,26 @@ async function loadBatchesTable(container) {
               .map(
                 b => `
               <tr>
-                <td style="font-family: var(--font-mono); font-weight: 600;">${b.id.slice(0, 13)}...</td>
+                <td style="font-family: var(--font-mono); font-weight: 600; color: var(--text-primary);">${b.id.slice(0, 13)}…</td>
                 <td>
-                  <div>${escapeHtml(b.source_uri)}</div>
-                  <span class="badge badge-neutral" style="font-size: 10px;">${escapeHtml(b.screening_scope)}</span>
+                  <div class="truncate" style="max-width: 320px;" title="${escapeHtml(b.source_uri)}">${escapeHtml(b.source_uri)}</div>
+                  <span class="badge badge-neutral" style="font-size: 10px; margin-top: 2px;">${escapeHtml(b.screening_scope)}</span>
                 </td>
                 <td>
                   <span class="badge ${b.status === 'COMPLETED' ? 'badge-success' : b.status === 'DUPLICATE_IGNORED' ? 'badge-medium' : 'badge-neutral'}">
                     ${escapeHtml(b.status)}
                   </span>
                 </td>
-                <td style="font-family: var(--font-mono);">${formatUtc(b.ingested_at)}</td>
-                <td style="font-family: var(--font-mono); font-weight: bold;">${b.valid_count} / ${b.row_count}</td>
-                <td style="font-family: var(--font-mono); color: ${b.error_count > 0 ? 'var(--color-critical)' : 'var(--text-muted)'};">
+                <td class="tabular-nums">${formatUtc(b.ingested_at)}</td>
+                <td class="tabular-nums" style="font-weight: bold; color: var(--text-primary);">${b.valid_count} / ${b.row_count}</td>
+                <td class="tabular-nums" style="color: ${b.error_count > 0 ? 'var(--color-critical)' : 'var(--text-muted)'};">
                   ${b.error_count}
                 </td>
-                <td style="font-family: var(--font-mono); color: var(--text-muted);" title="${b.content_sha256}">
-                  ${b.content_sha256.slice(0, 16)}...
+                <td>
+                  <div class="hash-cell">
+                    <span title="${b.content_sha256}">${truncateHash(b.content_sha256, 8, 8)}</span>
+                    <button class="copy-btn btn-ghost btn-xs" data-hash="${b.content_sha256}" title="Copy SHA-256 checksum">📋</button>
+                  </div>
                 </td>
               </tr>
             `,
@@ -388,14 +412,22 @@ async function loadBatchesTable(container) {
       </div>
 
       <div class="pagination-bar">
-        <div>Total ${pagination.total} batches recorded</div>
+        <div>Total <span class="tabular-nums">${pagination.total}</span> batches recorded</div>
         <div class="pagination-controls">
           <button id="btn-batch-prev" class="btn btn-secondary btn-sm" ${pagination.page <= 1 ? 'disabled' : ''}>← Previous</button>
-          <span>Page ${pagination.page} of ${pagination.totalPages}</span>
+          <span style="font-family: var(--font-mono); font-size: 11px;">Page ${pagination.page} of ${pagination.totalPages}</span>
           <button id="btn-batch-next" class="btn btn-secondary btn-sm" ${pagination.page >= pagination.totalPages ? 'disabled' : ''}>Next →</button>
         </div>
       </div>
     `;
+
+    // Copy buttons
+    wrapper.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const hash = btn.getAttribute('data-hash');
+        if (hash) copyToClipboard(hash, 'Snapshot Checksum');
+      });
+    });
 
     wrapper.querySelector('#btn-batch-prev')?.addEventListener('click', () => {
       if (currentBatchesPage > 1) {

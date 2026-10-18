@@ -11,6 +11,7 @@
  * Scenario D — Operator review workflow, justification rules, re-review, audit verification & tamper detection
  * Scenario E — Usability, viewport responsiveness, client routing, and security boundaries
  */
+/* global document, window */
 
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
@@ -416,7 +417,33 @@ test.describe('Part 7A: Real Browser End-to-End Workflows', () => {
     await page.reload();
     await expect(page.locator('h1')).toHaveText('Cryptographic Audit Ledger');
 
-    // 4. Security boundaries: Operator key is transient in memory only
+    // 4. Standalone Orbital Screening tab navigation & computation
+    await page.click('#tab-propagation');
+    await expect(page.locator('h1')).toHaveText('Orbital Propagation Screening');
+    await expect(page.locator('.sgp4-banner')).toContainText(
+      'Scientific Scope and Model Assumptions',
+    );
+
+    // Run preset propagation calculation
+    await page.click('#btn-quick-fill-iss');
+    await page.click('#btn-run-propagation');
+    await expect(page.locator('#results-display-area')).toContainText('Estimated Miss Distance', {
+      timeout: 10000,
+    });
+    await expect(page.locator('#results-display-area')).toContainText('Relative Speed');
+
+    // 5. Mobile horizontal overflow check
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/#overview');
+    const isOverflown = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    );
+    expect(isOverflown).toBe(false);
+
+    // Reset to desktop
+    await page.setViewportSize({ width: 1280, height: 720 });
+
+    // 6. Security boundaries: Operator key is transient in memory only
     await page.click('#operator-auth-badge');
     await page.fill('#modal-input-key', 'secret-transient-key-xyz');
     await page.click('button:has-text("Save Key in Memory")');

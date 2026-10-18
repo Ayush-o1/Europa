@@ -10,6 +10,7 @@ import { setupNavigation } from './components/nav.js';
 import { renderOverview } from './views/overview.js';
 import { renderEvents } from './views/events.js';
 import { renderEventDetails } from './views/eventDetails.js';
+import { renderPropagation } from './views/propagation.js';
 import { renderIngestion } from './views/ingestion.js';
 import { renderAudit } from './views/audit.js';
 
@@ -24,6 +25,7 @@ function initApp() {
     overview: renderOverview,
     events: renderEvents,
     eventDetails: renderEventDetails,
+    propagation: renderPropagation,
     ingestion: renderIngestion,
     audit: renderAudit,
   };

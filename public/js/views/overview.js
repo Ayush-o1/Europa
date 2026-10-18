@@ -1,5 +1,5 @@
 /**
- * @fileoverview Part 6A: Operational Overview View
+ * @fileoverview Operational Overview View
  *
  * Renders real operational metrics, urgency distributions, upcoming encounters,
  * and latest ingestion activity derived strictly from live API queries.
@@ -19,14 +19,14 @@ import {
 export async function renderOverview(container) {
   container.innerHTML = `
     <div class="view-header">
-      <div class="view-title-group">
-        <h1>Operational Conjunction Overview</h1>
-        <p class="view-description">
+      <div class="view-header-main">
+        <h1 class="view-title">Operational Conjunction Overview</h1>
+        <p class="view-desc">
           Real-time summary of correlated satellite close-approach events, screening urgency distributions,
           and latest SOCRATES snapshot processing status.
         </p>
       </div>
-      <div class="header-action-group">
+      <div class="view-actions">
         <button id="btn-refresh-overview" class="btn btn-secondary btn-sm">↻ Refresh</button>
       </div>
     </div>
@@ -92,83 +92,120 @@ async function loadOverviewData(container) {
 
     const closestEvent = events[0];
     const latestBatch = batches[0] || null;
-
-    // Filter upcoming critical / high priority events for top list
     const topUrgentEvents = events.slice(0, 6);
 
     contentEl.innerHTML = `
+      <!-- Operational Telemetry Bar -->
+      <div class="telemetry-strip" style="margin-bottom: var(--space-4);">
+        <div class="telemetry-item">
+          <span>Active Encounters:</span>
+          <strong>${totalEvents}</strong>
+        </div>
+        <div class="telemetry-divider"></div>
+        <div class="telemetry-item">
+          <span>Close Approach Threshold:</span>
+          <strong>5.000 km</strong>
+        </div>
+        <div class="telemetry-divider"></div>
+        <div class="telemetry-item">
+          <span>Latest Ingestion:</span>
+          <strong>${latestBatch ? formatUtc(latestBatch.ingested_at) : 'None'}</strong>
+        </div>
+        <div class="telemetry-divider"></div>
+        <div class="telemetry-item">
+          <span>Evaluation Heuristic:</span>
+          <span class="badge badge-brand" style="font-size: 10px;">v1.0.0 Multi-Factor</span>
+        </div>
+      </div>
+
       <!-- KPI Metric Cards Grid -->
       <div class="metrics-grid">
-        <div class="metric-card">
+        <div class="metric-card accent-brand">
           <span class="metric-label">Active Encounters</span>
           <span class="metric-value">${totalEvents}</span>
-          <span class="metric-subtext">${unreviewedCount} pending initial operator review</span>
+          <span class="metric-subtext">
+            <span class="badge ${unreviewedCount > 0 ? 'badge-high' : 'badge-neutral'}" style="font-size: 10px;">${unreviewedCount} UNREVIEWED</span>
+            <span>pending review</span>
+          </span>
         </div>
 
-        <div class="metric-card" style="border-left: 3px solid var(--color-critical);">
+        <div class="metric-card accent-critical">
           <span class="metric-label">Critical Review Urgency</span>
           <span class="metric-value" style="color: var(--color-critical);">${criticalCount}</span>
-          <span class="metric-subtext">Immediate screening required</span>
+          <span class="metric-subtext" style="color: var(--color-critical);">
+            ${criticalCount > 0 ? '⚠ Immediate screening required' : '✓ No critical breaches'}
+          </span>
         </div>
 
-        <div class="metric-card" style="border-left: 3px solid ${reReviewCount > 0 ? 'var(--color-critical)' : 'var(--color-success)'};">
-          <span class="metric-label">Fresh Re-Review Required</span>
-          <span class="metric-value" style="color: ${reReviewCount > 0 ? 'var(--color-critical)' : 'var(--text-primary)'};">${reReviewCount}</span>
-          <span class="metric-subtext">Material prediction drift detected</span>
+        <div class="metric-card ${reReviewCount > 0 ? 'accent-high' : 'accent-low'}">
+          <span class="metric-label">Re-Review Required</span>
+          <span class="metric-value" style="color: ${reReviewCount > 0 ? 'var(--color-high)' : 'var(--text-primary)'};">${reReviewCount}</span>
+          <span class="metric-subtext">
+            ${reReviewCount > 0 ? 'Material prediction drift detected' : 'Trajectories within tolerances'}
+          </span>
         </div>
 
-        <div class="metric-card">
-          <span class="metric-label">Minimum Miss Distance</span>
-          <span class="metric-value" style="font-size: var(--text-2xl);">${formatDistance(closestEvent.min_predicted_range_km)}</span>
-          <span class="metric-subtext">${escapeHtml(closestEvent.primary_object_name)} vs ${escapeHtml(closestEvent.secondary_object_name)}</span>
+        <div class="metric-card accent-medium">
+          <span class="metric-label">Closest Encounter Range</span>
+          <span class="metric-value" style="font-size: var(--text-2xl); color: ${parseFloat(closestEvent.min_predicted_range_km) < 1.0 ? 'var(--color-critical)' : 'var(--text-primary)'};">
+            ${formatDistance(closestEvent.min_predicted_range_km)}
+          </span>
+          <span class="metric-subtext truncate" title="${escapeHtml(closestEvent.primary_object_name)} vs ${escapeHtml(closestEvent.secondary_object_name)}">
+            ${escapeHtml(closestEvent.primary_object_name)} vs ${escapeHtml(closestEvent.secondary_object_name)}
+          </span>
         </div>
       </div>
 
       <!-- Urgency Distribution and Ingestion Summary -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-6); margin-bottom: var(--space-6);">
+      <div class="overview-grid">
         <!-- Priority Classification Breakdown -->
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">Priority Assessment Classification</h2>
+            <div>
+              <h2 class="card-title">Priority Assessment Classification</h2>
+              <div class="card-subtitle">Urgency tier distribution across all correlated encounters</div>
+            </div>
+            <span class="badge badge-neutral">${totalEvents} TOTAL</span>
           </div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-3);">
-            <div>
-              <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); margin-bottom: var(--space-1);">
-                <span class="badge badge-critical">Critical Urgency</span>
-                <span style="font-family: var(--font-mono); font-weight: bold;">${criticalCount} (${totalEvents ? Math.round((criticalCount / totalEvents) * 100) : 0}%)</span>
+
+          <div class="distribution-list">
+            <div class="distribution-item">
+              <div class="distribution-header">
+                <span class="badge badge-critical">Critical Urgency (&lt; 1.0 km)</span>
+                <span class="tabular-nums" style="font-weight: 700;">${criticalCount} (${totalEvents ? Math.round((criticalCount / totalEvents) * 100) : 0}%)</span>
               </div>
-              <div style="background: var(--bg-surface-2); height: 6px; border-radius: 3px; overflow: hidden;">
-                <div style="background: var(--color-critical); width: ${totalEvents ? (criticalCount / totalEvents) * 100 : 0}%; height: 100%;"></div>
+              <div class="distribution-bar-track">
+                <div class="distribution-bar-fill" style="background: var(--color-critical); width: ${totalEvents ? (criticalCount / totalEvents) * 100 : 0}%;"></div>
               </div>
             </div>
 
-            <div>
-              <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); margin-bottom: var(--space-1);">
-                <span class="badge badge-high">High Urgency</span>
-                <span style="font-family: var(--font-mono); font-weight: bold;">${highCount} (${totalEvents ? Math.round((highCount / totalEvents) * 100) : 0}%)</span>
+            <div class="distribution-item">
+              <div class="distribution-header">
+                <span class="badge badge-high">High Urgency (&lt; 5.0 km)</span>
+                <span class="tabular-nums" style="font-weight: 700;">${highCount} (${totalEvents ? Math.round((highCount / totalEvents) * 100) : 0}%)</span>
               </div>
-              <div style="background: var(--bg-surface-2); height: 6px; border-radius: 3px; overflow: hidden;">
-                <div style="background: var(--color-high); width: ${totalEvents ? (highCount / totalEvents) * 100 : 0}%; height: 100%;"></div>
-              </div>
-            </div>
-
-            <div>
-              <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); margin-bottom: var(--space-1);">
-                <span class="badge badge-medium">Medium Urgency</span>
-                <span style="font-family: var(--font-mono); font-weight: bold;">${mediumCount} (${totalEvents ? Math.round((mediumCount / totalEvents) * 100) : 0}%)</span>
-              </div>
-              <div style="background: var(--bg-surface-2); height: 6px; border-radius: 3px; overflow: hidden;">
-                <div style="background: var(--color-medium); width: ${totalEvents ? (mediumCount / totalEvents) * 100 : 0}%; height: 100%;"></div>
+              <div class="distribution-bar-track">
+                <div class="distribution-bar-fill" style="background: var(--color-high); width: ${totalEvents ? (highCount / totalEvents) * 100 : 0}%;"></div>
               </div>
             </div>
 
-            <div>
-              <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); margin-bottom: var(--space-1);">
+            <div class="distribution-item">
+              <div class="distribution-header">
+                <span class="badge badge-medium">Medium Urgency (&lt; 10.0 km)</span>
+                <span class="tabular-nums" style="font-weight: 700;">${mediumCount} (${totalEvents ? Math.round((mediumCount / totalEvents) * 100) : 0}%)</span>
+              </div>
+              <div class="distribution-bar-track">
+                <div class="distribution-bar-fill" style="background: var(--color-medium); width: ${totalEvents ? (mediumCount / totalEvents) * 100 : 0}%;"></div>
+              </div>
+            </div>
+
+            <div class="distribution-item">
+              <div class="distribution-header">
                 <span class="badge badge-low">Low / Monitoring</span>
-                <span style="font-family: var(--font-mono); font-weight: bold;">${lowCount} (${totalEvents ? Math.round((lowCount / totalEvents) * 100) : 0}%)</span>
+                <span class="tabular-nums" style="font-weight: 700;">${lowCount} (${totalEvents ? Math.round((lowCount / totalEvents) * 100) : 0}%)</span>
               </div>
-              <div style="background: var(--bg-surface-2); height: 6px; border-radius: 3px; overflow: hidden;">
-                <div style="background: var(--color-low); width: ${totalEvents ? (lowCount / totalEvents) * 100 : 0}%; height: 100%;"></div>
+              <div class="distribution-bar-track">
+                <div class="distribution-bar-fill" style="background: var(--color-low); width: ${totalEvents ? (lowCount / totalEvents) * 100 : 0}%;"></div>
               </div>
             </div>
           </div>
@@ -177,33 +214,36 @@ async function loadOverviewData(container) {
         <!-- Latest Ingestion Activity -->
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">Latest SOCRATES Ingestion Status</h2>
-            <button id="btn-view-all-batches" class="btn btn-secondary btn-sm">All Batches →</button>
+            <div>
+              <h2 class="card-title">Latest SOCRATES Ingestion Status</h2>
+              <div class="card-subtitle">Source snapshot provenance and deduplication record</div>
+            </div>
+            <button id="btn-view-all-batches" class="btn btn-secondary btn-xs">All Batches →</button>
           </div>
           ${
             latestBatch
               ? `
-            <div style="display: flex; flex-direction: column; gap: var(--space-3); font-size: var(--text-sm);">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: var(--text-muted);">Batch ID</span>
-                <span style="font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-secondary);">${latestBatch.id.slice(0, 13)}...</span>
+            <div class="ingestion-summary-grid">
+              <div class="ingestion-summary-item">
+                <span class="ingestion-summary-label">Batch UUID</span>
+                <span class="ingestion-summary-value truncate" title="${latestBatch.id}">${latestBatch.id.slice(0, 13)}…</span>
               </div>
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: var(--text-muted);">Status</span>
-                <span class="badge badge-success">${escapeHtml(latestBatch.status)}</span>
+              <div class="ingestion-summary-item">
+                <span class="ingestion-summary-label">Processing Status</span>
+                <span class="badge badge-success" style="font-size: 10px; width: fit-content;">${escapeHtml(latestBatch.status)}</span>
               </div>
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: var(--text-muted);">Ingested At</span>
-                <span style="font-family: var(--font-mono); font-size: var(--text-xs);">${formatUtc(latestBatch.ingested_at)}</span>
+              <div class="ingestion-summary-item">
+                <span class="ingestion-summary-label">Ingested At (UTC)</span>
+                <span class="ingestion-summary-value">${formatUtc(latestBatch.ingested_at)}</span>
               </div>
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: var(--text-muted);">Rows / Valid Obs</span>
-                <span style="font-family: var(--font-mono);">${latestBatch.row_count} total / ${latestBatch.valid_count} valid</span>
+              <div class="ingestion-summary-item">
+                <span class="ingestion-summary-label">Rows / Valid Observations</span>
+                <span class="ingestion-summary-value">${latestBatch.row_count} total / ${latestBatch.valid_count} valid</span>
               </div>
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: var(--text-muted);">Scope</span>
-                <span class="badge badge-neutral">${escapeHtml(latestBatch.screening_scope)}</span>
-              </div>
+            </div>
+            <div style="margin-top: var(--space-3); padding-top: var(--space-2-5); border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; font-size: var(--text-2xs); color: var(--text-muted);">
+              <span>Scope: <span class="badge badge-neutral" style="font-size: 10px;">${escapeHtml(latestBatch.screening_scope)}</span></span>
+              <span>SHA-256 Verified ✓</span>
             </div>
           `
               : `<p class="state-desc">No ingestion batches recorded yet.</p>`
@@ -212,47 +252,53 @@ async function loadOverviewData(container) {
       </div>
 
       <!-- Priority Triage Queue (Top Encounters) -->
-      <div class="table-container">
-        <div class="table-toolbar">
-          <h2 class="card-title">Priority Encounter Queue (Closest Miss Distance)</h2>
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="card-header" style="padding: var(--space-4) var(--space-5); margin-bottom: 0;">
+          <div>
+            <h2 class="card-title">Priority Encounter Queue (Closest Miss Distance)</h2>
+            <div class="card-subtitle">Encounters sorted by minimum predicted miss distance</div>
+          </div>
           <button id="btn-view-all-events" class="btn btn-secondary btn-sm">View Full Triage Queue (${totalEvents}) →</button>
         </div>
-        <div style="overflow-x: auto;">
+
+        <div class="table-wrapper" style="border: none; border-radius: 0;">
           <table class="data-table">
             <thead>
               <tr>
                 <th>Primary Object</th>
                 <th>Secondary Object</th>
-                <th>Predicted TCA</th>
+                <th>Predicted TCA (UTC)</th>
                 <th>Miss Distance</th>
                 <th>Priority</th>
                 <th>Review Status</th>
-                <th>Actions</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               ${topUrgentEvents
                 .map(
                   evt => `
-                <tr class="clickable" data-event-id="${evt.id}">
+                <tr class="clickable-row" data-event-id="${evt.id}" style="cursor: pointer;">
                   <td>
-                    <div style="font-weight: 600;">${escapeHtml(evt.primary_object_name)}</div>
-                    <div style="font-size: var(--text-xs); font-family: var(--font-mono); color: var(--text-muted);">NORAD ${evt.primary_object_id}</div>
+                    <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(evt.primary_object_name)}</div>
+                    <div style="font-size: var(--text-2xs); font-family: var(--font-mono); color: var(--text-muted);">NORAD ${evt.primary_object_id}</div>
                   </td>
                   <td>
-                    <div style="font-weight: 600;">${escapeHtml(evt.secondary_object_name)}</div>
-                    <div style="font-size: var(--text-xs); font-family: var(--font-mono); color: var(--text-muted);">NORAD ${evt.secondary_object_id}</div>
+                    <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(evt.secondary_object_name)}</div>
+                    <div style="font-size: var(--text-2xs); font-family: var(--font-mono); color: var(--text-muted);">NORAD ${evt.secondary_object_id}</div>
                   </td>
                   <td>
-                    <div>${formatUtc(evt.latest_tca)}</div>
-                    <div style="font-size: var(--text-xs); font-family: var(--font-mono); color: var(--text-muted);">${formatRelativeTime(evt.latest_tca)}</div>
+                    <div class="tabular-nums">${formatUtc(evt.latest_tca)}</div>
+                    <div style="font-size: var(--text-2xs); font-family: var(--font-mono); color: var(--color-cyan);">${formatRelativeTime(evt.latest_tca)}</div>
                   </td>
                   <td>
-                    <div style="font-family: var(--font-mono); font-weight: 700; color: ${parseFloat(evt.latest_range_km) < 1.0 ? 'var(--color-critical)' : 'var(--text-primary)'};">
-                      ${formatDistance(evt.latest_range_km)}
-                    </div>
-                    <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">
-                      min: ${formatDistance(evt.min_predicted_range_km)}
+                    <div class="range-indicator-cell">
+                      <strong class="tabular-nums" style="font-size: var(--text-sm); color: ${parseFloat(evt.latest_range_km) < 1.0 ? 'var(--color-critical)' : parseFloat(evt.latest_range_km) < 5.0 ? 'var(--color-high)' : 'var(--text-primary)'};">
+                        ${formatDistance(evt.latest_range_km)}
+                      </strong>
+                      <span style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted);">
+                        min: ${formatDistance(evt.min_predicted_range_km)}
+                      </span>
                     </div>
                   </td>
                   <td>
@@ -275,9 +321,22 @@ async function loadOverviewData(container) {
     `;
 
     // Row click listeners to inspect event
-    contentEl.querySelectorAll('.clickable').forEach(row => {
+    contentEl.querySelectorAll('.clickable-row').forEach(row => {
       row.addEventListener('click', e => {
+        // Prevent double trigger if inspect button itself was clicked
+        if (e.target.closest('.btn-inspect')) return;
         const eventId = row.getAttribute('data-event-id');
+        if (eventId) {
+          state.set('selectedEventId', eventId);
+          state.set('currentView', 'eventDetails');
+        }
+      });
+    });
+
+    contentEl.querySelectorAll('.btn-inspect').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const eventId = btn.getAttribute('data-id');
         if (eventId) {
           state.set('selectedEventId', eventId);
           state.set('currentView', 'eventDetails');

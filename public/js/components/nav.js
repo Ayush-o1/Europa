@@ -1,6 +1,7 @@
 /**
  * @fileoverview Application Header & Navigation Component
- * Manages tab switching, system readiness indicator, and transient operator key modal.
+ * Manages tab switching, system readiness indicator, live UTC clock,
+ * breadcrumb hierarchy, and transient operator key modal.
  */
 
 import { state } from '../state.js';
@@ -13,6 +14,7 @@ export function setupNavigation() {
   const authBadge = document.getElementById('operator-auth-badge');
   const statusDot = document.getElementById('system-status-dot');
   const statusText = document.getElementById('system-status-text');
+  const utcDisplay = document.getElementById('utc-time-display');
 
   // Handle Tab Navigation
   tabs.forEach(tab => {
@@ -35,6 +37,11 @@ export function setupNavigation() {
         tab.setAttribute('aria-selected', 'false');
       }
     });
+
+    // Reset breadcrumb if navigating to a top-level tab
+    if (activeView !== 'eventDetails') {
+      setBreadcrumbs([]);
+    }
   });
 
   // Operator Auth Badge click -> Open Modal
@@ -63,6 +70,19 @@ export function setupNavigation() {
     }
   }
 
+  // Live UTC Clock
+  function updateUtcClock() {
+    if (!utcDisplay) return;
+    const now = new Date();
+    const hours = String(now.getUTCHours()).padStart(2, '0');
+    const mins = String(now.getUTCMinutes()).padStart(2, '0');
+    const secs = String(now.getUTCSeconds()).padStart(2, '0');
+    utcDisplay.textContent = `${hours}:${mins}:${secs}`;
+  }
+
+  updateUtcClock();
+  setInterval(updateUtcClock, 1000);
+
   // Periodic Health Check (every 60s)
   async function checkHealth() {
     try {
@@ -81,6 +101,48 @@ export function setupNavigation() {
 }
 
 /**
+ * Sets application breadcrumb bar.
+ * @param {Array<{ label: string, view?: string, eventId?: string }>} items
+ */
+export function setBreadcrumbs(items = []) {
+  const root = document.getElementById('breadcrumb-root');
+  if (!root) return;
+
+  if (!items || items.length === 0) {
+    root.style.display = 'none';
+    root.innerHTML = '';
+    return;
+  }
+
+  root.style.display = 'flex';
+  const html = items
+    .map((item, idx) => {
+      const isLast = idx === items.length - 1;
+      if (isLast) {
+        return `<span class="breadcrumb-current">${item.label}</span>`;
+      }
+      return `
+        <a href="#${item.view || 'overview'}" class="breadcrumb-link" data-view="${item.view || 'overview'}">${item.label}</a>
+        <span class="breadcrumb-separator">/</span>
+      `;
+    })
+    .join('');
+
+  root.innerHTML = html;
+
+  // Bind click handlers
+  root.querySelectorAll('.breadcrumb-link').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = link.getAttribute('data-view');
+      if (target) {
+        state.set('currentView', target);
+      }
+    });
+  });
+}
+
+/**
  * Opens operator authentication modal.
  */
 export function openOperatorAuthModal() {
@@ -89,7 +151,7 @@ export function openOperatorAuthModal() {
 
   const content = document.createElement('div');
   content.innerHTML = `
-    <p style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--space-4);">
+    <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: var(--space-4); line-height: 1.5;">
       Write operations (such as uploading snapshots and submitting operator review decisions)
       require an operator API key. The key is kept strictly in transient memory for this session
       and is never written to disk or browser web storage.
@@ -100,11 +162,11 @@ export function openOperatorAuthModal() {
       <input
         type="password"
         id="modal-input-key"
-        class="input-text"
+        class="form-input"
         placeholder="Enter operator API key..."
         value="${currentKey}"
       />
-      <span style="font-size: 11px; color: var(--text-muted);">Default development key: <code style="color: #cbd5e1;">europa-dev-key</code></span>
+      <span class="form-hint">Default development key: <code style="color: var(--text-primary);">europa-dev-key</code></span>
     </div>
 
     <div class="form-group" style="margin-bottom: var(--space-3);">
@@ -112,11 +174,11 @@ export function openOperatorAuthModal() {
       <input
         type="text"
         id="modal-input-actor"
-        class="input-text"
-        placeholder="e.g. flight-director-1"
+        class="form-input"
+        placeholder="e.g. flight-director-alpha"
         value="${currentActor}"
       />
-      <span style="font-size: 11px; color: var(--text-muted);">Attributed in the immutable audit ledger.</span>
+      <span class="form-hint">Attributed in the immutable audit ledger.</span>
     </div>
   `;
 
