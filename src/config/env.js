@@ -39,7 +39,7 @@ export function loadConfig(env = process.env) {
   const defaultUser =
     env.PGUSER ||
     process.env.PGUSER ||
-    (process.env.GITHUB_ACTIONS === 'true'
+    (process.env.GITHUB_ACTIONS === 'true' || process.env.CI === 'true'
       ? 'postgres'
       : env.USER || (env === process.env ? process.env.USER : undefined) || 'postgres');
 
@@ -63,6 +63,7 @@ export function loadConfig(env = process.env) {
 
   return Object.freeze({
     port: parseInteger(env.PORT, 3000),
+    host: env.HOST || '0.0.0.0',
     nodeEnv,
     logLevel: env.LOG_LEVEL || 'info',
     databaseUrl,

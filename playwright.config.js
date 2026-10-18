@@ -1,8 +1,10 @@
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 import { defineConfig } from '@playwright/test';
+import { getTestConfig } from './test/helpers/dbCleanup.js';
 
 const isMac = process.platform === 'darwin';
 const isCI = !!process.env.CI;
+const testConfig = getTestConfig();
 
 export default defineConfig({
   testDir: './test/e2e',
@@ -26,10 +28,17 @@ export default defineConfig({
     command: 'node src/index.js',
     url: 'http://127.0.0.1:3099/api/v1/health',
     reuseExistingServer: false,
-    timeout: 15000,
+    timeout: 60000,
+    stdout: 'pipe',
+    stderr: 'pipe',
     env: {
+      ...process.env,
       PORT: '3099',
+      HOST: '0.0.0.0',
       NODE_ENV: 'test',
+      DATABASE_URL: testConfig.databaseUrl,
+      TEST_DATABASE_URL: testConfig.databaseUrl,
+      PGUSER: process.env.PGUSER || (isCI ? 'postgres' : process.env.USER || 'postgres'),
     },
   },
 });

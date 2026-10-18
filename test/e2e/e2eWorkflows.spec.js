@@ -15,15 +15,15 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resetTestDatabase } from '../helpers/dbCleanup.js';
-import { query } from '../../src/db/pool.js';
-import { config } from '../../src/config/env.js';
+import { getTestConfig, resetTestDatabase } from '../helpers/dbCleanup.js';
+import { query, closePool } from '../../src/db/pool.js';
 
+const testConfig = getTestConfig();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const FIXTURES_DIR = path.resolve(__dirname, '../fixtures');
 
-const VALID_KEY = config.operatorApiKey || 'test-operator-key';
+const VALID_KEY = testConfig.operatorApiKey || 'test-operator-key';
 
 test.describe('Part 7A: Real Browser End-to-End Workflows', () => {
   test.beforeEach(async () => {
@@ -32,6 +32,7 @@ test.describe('Part 7A: Real Browser End-to-End Workflows', () => {
 
   test.afterAll(async () => {
     await resetTestDatabase();
+    await closePool();
   });
 
   test('Scenario A: Fresh installation, home page load, real health status, and empty states', async ({

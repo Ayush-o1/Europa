@@ -11,8 +11,9 @@ import { closePool } from './db/pool.js';
 
 const app = createApp();
 
-const server = app.listen(config.port, () => {
-  console.log(`[Europa Server] Listening on port ${config.port} (${config.nodeEnv})`);
+const host = config.host || '0.0.0.0';
+const server = app.listen(config.port, host, () => {
+  console.log(`[Europa Server] Listening on ${host}:${config.port} (${config.nodeEnv})`);
 });
 
 /**

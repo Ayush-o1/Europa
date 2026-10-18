@@ -6,31 +6,29 @@
  */
 
 import { query } from '../../src/db/pool.js';
-import { loadConfig, config as defaultConfig } from '../../src/config/env.js';
+import { loadConfig } from '../../src/config/env.js';
 
 /**
  * Validates that the current environment is safely isolated for destructive test resets.
  * Throws a fatal Error if production or unsafe database target is detected.
  *
- * @param {string} [connectionString=defaultConfig.databaseUrl]
+ * @param {string} [connectionString]
  */
-export function assertSafeTestEnvironment(connectionString = defaultConfig.databaseUrl) {
-  if (
-    process.env.NODE_ENV === 'production' ||
-    (connectionString && connectionString.includes('prod'))
-  ) {
+export function assertSafeTestEnvironment(connectionString) {
+  const targetUrl = connectionString || loadConfig().databaseUrl;
+
+  if (process.env.NODE_ENV === 'production' || (targetUrl && targetUrl.includes('prod'))) {
     throw new Error(
       '[Security Guard] Database cleanup aborted: Refusing to run destructive cleanup against PRODUCTION environment.',
     );
   }
 
   const isTestDb =
-    (connectionString && connectionString.includes('test')) ||
-    process.env.ALLOW_DEV_RESET === 'true';
+    (targetUrl && targetUrl.includes('test')) || process.env.ALLOW_DEV_RESET === 'true';
 
   if (!isTestDb) {
     throw new Error(
-      `[Security Guard] Database cleanup aborted: Target database URL does not contain 'test'. URL: ${connectionString}`,
+      `[Security Guard] Database cleanup aborted: Target database URL does not contain 'test'. URL: ${targetUrl}`,
     );
   }
 }
@@ -75,11 +73,12 @@ export function getTestConfig(overrides = {}) {
  * Resets all application tables in the test database in dependency order.
  * Uses TRUNCATE on audit_ledger to satisfy its immutability triggers.
  *
- * @param {string} [connectionString=defaultConfig.databaseUrl]
+ * @param {string} [connectionString]
  * @returns {Promise<void>}
  */
-export async function resetTestDatabase(connectionString = defaultConfig.databaseUrl) {
-  assertSafeTestEnvironment(connectionString);
+export async function resetTestDatabase(connectionString) {
+  const targetUrl = connectionString || loadConfig().databaseUrl;
+  assertSafeTestEnvironment(targetUrl);
 
   await query('TRUNCATE audit_ledger CASCADE;');
   await query('DELETE FROM orbital_screenings;');
