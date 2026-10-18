@@ -1,0 +1,126 @@
+# Voidline
+
+> Satellite close-approach correlation, prediction evolution tracking, and auditable review platform.
+
+Voidline is an analytical software platform and backend engineering demonstration inspired by Space Situational Awareness (SSA) workflows. It ingests repeated public satellite close-approach predictions (such as CelesTrak SOCRATES), correlates observations into discrete encounter events over time, preserves the history of changing predictions, calculates transparent review priorities, and provides an auditable operational review workflow.
+
+---
+
+## Technical Stack & Architecture
+
+- **Runtime:** Node.js (Recommended: Node.js 24 LTS; supported minimum: Node.js 22 LTS; active development environment: Node.js 26 Current)
+- **Module System:** ECMAScript Modules (ESM)
+- **Backend Framework:** Express.js (Modular Monolith)
+- **Database:** PostgreSQL 15+ (Relational integrity, transactional advisory locks, strictly isolated transactions)
+- **Testing:** Vitest
+- **Code Quality:** ESLint (Flat Config v10+), Prettier
+
+---
+
+## Project Structure
+
+```text
+Voidline/
+├── src/
+│   ├── config/          # Environment configuration & validation
+│   ├── db/              # PostgreSQL pool, transactional migrator & schema SQL
+│   │   ├── migrations/  # Incremental pure SQL migrations (001, 002)
+│   │   ├── migrator.js  # Transactional migration runner with advisory locking
+│   │   └── pool.js      # Connection pool & query helpers
+│   ├── modules/         # Domain modules
+│   │   ├── ingestion/   # SOCRATES CSV parser, validator & ingestion service
+│   │   ├── correlation/ # Event correlation service & matching heuristics
+│   │   └── lifecycle/   # Event lifecycle state transitions (e.g., PAST_TCA)
+│   └── utils/           # Shared utility functions
+├── scripts/             # Operational & developer CLI tools (migrate, replay, audit)
+├── storage/
+│   └── snapshots/       # Immutable local raw snapshot archive
+├── test/
+│   ├── fixtures/        # Sample scenario CSV datasets (real, malformed)
+│   ├── unit/            # Unit tests for domain logic, parser & matching policy
+│   └── integration/     # Database ingestion, concurrency & correlation tests
+├── public/              # Static frontend assets (HTML, CSS, vanilla JS)
+├── eslint.config.js     # ESLint flat configuration
+├── vitest.config.js     # Vitest test runner configuration
+├── .prettierrc          # Prettier code formatting rules
+├── .env.example         # Environment template
+└── package.json         # Project manifest
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js:** v22.0.0 or higher (recommended: **Node.js 24 LTS**; active dev environment runs **Node.js 26 Current**)
+- **npm:** v10.0.0 or higher
+- **PostgreSQL:** v15 or higher (running locally on port 5432)
+
+### Installation
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/Ayush-o1/Voidline.git
+cd Voidline
+npm install
+```
+
+### Database Provisioning
+
+Create local development and test databases in PostgreSQL:
+
+```bash
+# Using standard macOS Homebrew PostgreSQL or local psql
+psql -d postgres -c "CREATE DATABASE voidline_dev;"
+psql -d postgres -c "CREATE DATABASE voidline_test;"
+```
+
+### Environment Setup
+
+Copy the example environment configuration:
+
+```bash
+cp .env.example .env
+```
+
+Apply database migrations:
+
+```bash
+npm run db:migrate
+```
+
+---
+
+## Available Commands
+
+| Command                | Purpose                                                                    |
+| :--------------------- | :------------------------------------------------------------------------- |
+| `npm test`             | Run the automated test suite once via Vitest (unit & database integration) |
+| `npm run test:watch`   | Run Vitest in interactive watch mode                                       |
+| `npm run db:migrate`   | Apply all pending transactional SQL migrations                             |
+| `npm run lint`         | Check code for style and syntax errors via ESLint                          |
+| `npm run lint:fix`     | Automatically fix ESLint warnings and errors                               |
+| `npm run format`       | Format all source and test files using Prettier                            |
+| `npm run format:check` | Verify formatting consistency without writing changes                      |
+
+---
+
+## Current Status
+
+- **Phase 0 (Foundation & Scaffolding):** Completed and verified.
+- **Phase 1 (Database & Ingestion Pipeline):** Completed and verified.
+  - Transactional SQL migration engine with advisory locking.
+  - Phase 1 relational schema: `ingestion_batches`, `space_objects`, `raw_observations`, `batch_errors`.
+  - RFC 4180 streaming SOCRATES CSV parser handling 6-digit catalog numbers, scientific notation, and status codes.
+  - Atomic ingestion pipeline with SHA-256 disk archiving, idempotency enforcement, and multi-snapshot provenance.
+- **Phase 2 (Event Correlation Engine):** Completed and verified.
+  - Additive migration `002_correlation_tables.sql`: `conjunction_events`, `event_observations`, `correlation_decisions`.
+  - Concurrency control: Two-key transaction advisory locks (`pg_advisory_xact_lock(primary, secondary)`) preventing duplicate events under concurrent imports.
+  - Deterministic canonical pair identity (`primary_id = min(a,b)`, `secondary_id = max(a,b)`).
+  - Explicit heuristic matching policy: 20-minute step tolerance, 45-minute cumulative drift ceiling.
+  - Ambiguity tracking: Flagging and preserving competing intra-snapshot predictions, continuity breaks, or multiple plausible candidates without arbitrary merging.
+  - Out-of-order snapshot safety: Non-destructive backfills preserving latest predicted state and historical sequence.
+  - Deterministic event lifecycle manager (`PAST_TCA` transition logic with injectable reference time).
+- **Phase 3 (Risk Assessment & Scoring Engine):** Pending explicit authorization.

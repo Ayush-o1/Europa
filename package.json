@@ -1,0 +1,45 @@
+{
+  "name": "voidline",
+  "version": "0.1.0",
+  "description": "Satellite close-approach correlation and review-priority platform",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "node scripts/migrate.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ayush-o1/Voidline.git"
+  },
+  "keywords": [
+    "space-situational-awareness",
+    "orbital-data",
+    "conjunction-assessment",
+    "celestrak",
+    "socrates"
+  ],
+  "author": "Ayush",
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/pg": "^8.23.1",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "csv-parser": "^3.2.1",
+    "pg": "^8.23.1"
+  }
+}
