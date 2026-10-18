@@ -52,6 +52,8 @@ export function loadConfig(env = process.env) {
       env.CORRELATION_MAX_CUMULATIVE_DRIFT_MINUTES,
       45,
     ),
+    operatorApiKey:
+      env.OPERATOR_API_KEY || (nodeEnv === 'test' ? 'test-operator-key' : 'voidline-dev-key'),
     isProduction: nodeEnv === 'production',
     isTest: nodeEnv === 'test',
   });
