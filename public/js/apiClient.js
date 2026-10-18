@@ -1,5 +1,5 @@
 /**
- * @fileoverview Voidline Centralized API Client
+ * @fileoverview Europa Centralized API Client
  *
  * Encapsulates all backend HTTP communication, JSON parsing, error normalization,
  * and transient operator authentication headers.
@@ -24,7 +24,7 @@ export class ApiError extends Error {
 }
 
 /**
- * Base HTTP request wrapper handling standard Voidline envelopes.
+ * Base HTTP request wrapper handling standard Europa envelopes.
  * @param {string} endpoint
  * @param {RequestInit} [options={}]
  * @returns {Promise<{ data: any, pagination?: any }>}

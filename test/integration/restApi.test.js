@@ -72,6 +72,7 @@ describe('Phase 5 Integration: REST API & Operational Queries', () => {
       const bodyString = JSON.stringify(res.body);
       expect(bodyString).not.toContain('postgresql://');
       expect(bodyString).not.toContain('postgres:');
+      expect(bodyString).not.toContain('europa_test');
       expect(bodyString).not.toContain('voidline_test');
     });
   });
@@ -591,7 +592,7 @@ describe('Phase 5 Integration: REST API & Operational Queries', () => {
       const res = await request(app).get('/');
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toContain('text/html');
-      expect(res.text).toContain('<title>Voidline');
+      expect(res.text).toContain('<title>Europa');
       expect(res.text).toContain('id="view-content-root"');
     });
 
@@ -612,7 +613,7 @@ describe('Phase 5 Integration: REST API & Operational Queries', () => {
       const res = await request(app).get('/events');
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toContain('text/html');
-      expect(res.text).toContain('Voidline');
+      expect(res.text).toContain('Europa');
     });
   });
 });

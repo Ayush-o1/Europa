@@ -2,7 +2,7 @@
 /**
  * @fileoverview Phase 7 Performance Benchmark Harness
  *
- * Repeatable, rigorous performance benchmarking tool for Voidline.
+ * Repeatable, rigorous performance benchmarking tool for Europa.
  * Measures end-to-end and component operations across controlled synthetic workloads:
  * - CSV parsing and schema validation
  * - Snapshot raw ingestion and PostgreSQL persistence
@@ -339,7 +339,7 @@ async function runConcurrencyBenchmark(rowCount, concurrency = 3) {
  */
 async function main() {
   console.log('########################################################################');
-  console.log('              VOIDLINE PERFORMANCE BENCHMARK HARNESS                   ');
+  console.log('               EUROPA PERFORMANCE BENCHMARK HARNESS                    ');
   console.log('########################################################################');
 
   assertSafeTestEnvironment();

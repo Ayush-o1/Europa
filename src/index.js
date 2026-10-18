@@ -1,5 +1,5 @@
 /**
- * @fileoverview Voidline Server Startup Entrypoint
+ * @fileoverview Europa Server Startup Entrypoint
  *
  * Imports the configured Express application and initiates the HTTP server.
  * Manages graceful shutdown on termination signals.
@@ -12,7 +12,7 @@ import { closePool } from './db/pool.js';
 const app = createApp();
 
 const server = app.listen(config.port, () => {
-  console.log(`[Voidline Server] Listening on port ${config.port} (${config.nodeEnv})`);
+  console.log(`[Europa Server] Listening on port ${config.port} (${config.nodeEnv})`);
 });
 
 /**
@@ -20,22 +20,22 @@ const server = app.listen(config.port, () => {
  * @param {string} signal
  */
 async function handleShutdown(signal) {
-  console.log(`\n[Voidline Server] Received ${signal}. Initiating graceful shutdown...`);
+  console.log(`\n[Europa Server] Received ${signal}. Initiating graceful shutdown...`);
 
   server.close(async () => {
     try {
       await closePool();
-      console.log('[Voidline Server] Database connections closed. Exiting process.');
+      console.log('[Europa Server] Database connections closed. Exiting process.');
       process.exit(0);
     } catch (err) {
-      console.error('[Voidline Server] Error during database shutdown:', err);
+      console.error('[Europa Server] Error during database shutdown:', err);
       process.exit(1);
     }
   });
 
   // Force close after 10 seconds if graceful shutdown hangs
   setTimeout(() => {
-    console.error('[Voidline Server] Forced shutdown after timeout.');
+    console.error('[Europa Server] Forced shutdown after timeout.');
     process.exit(1);
   }, 10000).unref();
 }

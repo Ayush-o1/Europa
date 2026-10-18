@@ -19,7 +19,7 @@ const __dirname = path.dirname(__filename);
 const publicDir = path.resolve(__dirname, '../public');
 
 /**
- * Creates and configures the Voidline Express application.
+ * Creates and configures the Europa Express application.
  *
  * @returns {import('express').Express}
  */

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Voidline Environment Configuration Loader
+ * @fileoverview Europa Environment Configuration Loader
  * Loads and validates core configuration variables with safe fallback defaults.
  */
 
@@ -36,8 +36,8 @@ export function loadConfig(env = process.env) {
   const nodeEnv = env.NODE_ENV || (env === process.env ? 'development' : 'development');
   const defaultUser =
     env.PGUSER || env.USER || process.env.PGUSER || process.env.USER || 'postgres';
-  const defaultDevDb = `postgresql://${defaultUser}@localhost:5432/voidline_dev`;
-  const defaultTestDb = `postgresql://${defaultUser}@localhost:5432/voidline_test`;
+  const defaultDevDb = `postgresql://${defaultUser}@localhost:5432/europa_dev`;
+  const defaultTestDb = `postgresql://${defaultUser}@localhost:5432/europa_test`;
 
   return Object.freeze({
     port: parseInteger(env.PORT, 3000),
@@ -53,7 +53,7 @@ export function loadConfig(env = process.env) {
       45,
     ),
     operatorApiKey:
-      env.OPERATOR_API_KEY || (nodeEnv === 'test' ? 'test-operator-key' : 'voidline-dev-key'),
+      env.OPERATOR_API_KEY || (nodeEnv === 'test' ? 'test-operator-key' : 'europa-dev-key'),
     isProduction: nodeEnv === 'production',
     isTest: nodeEnv === 'test',
   });

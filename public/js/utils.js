@@ -1,5 +1,5 @@
 /**
- * @fileoverview Voidline Frontend Utility Functions
+ * @fileoverview Europa Frontend Utility Functions
  * Precision formatting for SSA metrics, timestamps, and sanitization.
  */
 

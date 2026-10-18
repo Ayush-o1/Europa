@@ -20,8 +20,8 @@ describe('Environment Configuration Loader', () => {
       PORT: '8080',
       NODE_ENV: 'production',
       LOG_LEVEL: 'warn',
-      DATABASE_URL: 'postgresql://analyst:secret@remote-db:5432/voidline_prod',
-      STORAGE_DIR: '/var/voidline/snapshots',
+      DATABASE_URL: 'postgresql://analyst:secret@remote-db:5432/europa_prod',
+      STORAGE_DIR: '/var/europa/snapshots',
       CORRELATION_STEP_TOLERANCE_MINUTES: '30',
       CORRELATION_MAX_CUMULATIVE_DRIFT_MINUTES: '60',
     };
@@ -31,8 +31,8 @@ describe('Environment Configuration Loader', () => {
     expect(config.port).toBe(8080);
     expect(config.nodeEnv).toBe('production');
     expect(config.logLevel).toBe('warn');
-    expect(config.databaseUrl).toBe('postgresql://analyst:secret@remote-db:5432/voidline_prod');
-    expect(config.storageDir).toBe('/var/voidline/snapshots');
+    expect(config.databaseUrl).toBe('postgresql://analyst:secret@remote-db:5432/europa_prod');
+    expect(config.storageDir).toBe('/var/europa/snapshots');
     expect(config.correlationStepToleranceMinutes).toBe(30);
     expect(config.correlationMaxCumulativeDriftMinutes).toBe(60);
     expect(config.isProduction).toBe(true);

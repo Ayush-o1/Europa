@@ -15,7 +15,7 @@ export async function renderAudit(container) {
       <div class="view-title-group">
         <h1>Cryptographic Audit Ledger</h1>
         <p class="view-description">
-          Inspect and cryptographically verify Voidline's append-only, SHA-256 hash-chained audit ledger.
+          Inspect and cryptographically verify Europa's append-only, SHA-256 hash-chained audit ledger.
           Every conjunction event creation, correlation decision, priority assessment, and operator review is immutably recorded.
         </p>
       </div>
@@ -44,7 +44,7 @@ export async function renderAudit(container) {
     <div class="scientific-disclaimer" style="margin-bottom: var(--space-6);">
       <span class="disclaimer-icon">🛡</span>
       <div>
-        <strong>Integrity & Cryptographic Model Notice:</strong> Voidline implements a database-level SHA-256 hash-chained ledger.
+        <strong>Integrity & Cryptographic Model Notice:</strong> Europa implements a database-level SHA-256 hash-chained ledger.
         Each entry seals its sequence number, action type, actor attribution, canonical JSON payload, predecessor hash, and timestamp.
         Database-level anti-tampering triggers prohibit SQL UPDATE and DELETE operations.
         <em style="display: block; margin-top: var(--space-1); color: var(--text-muted);">

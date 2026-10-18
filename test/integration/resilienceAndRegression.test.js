@@ -293,13 +293,13 @@ describe('Part 7E: Regression and Resilience Test Suite', () => {
       // Test production URL rejection
       expect(() =>
         assertSafeTestEnvironment(
-          'postgresql://prod_user:secret@prod.host.voidline.internal:5432/voidline_prod',
+          'postgresql://prod_user:secret@prod.host.europa.internal:5432/europa_prod',
         ),
       ).toThrow(/Refusing to run destructive cleanup against PRODUCTION/i);
 
       // Test non-test dev database URL rejection
       expect(() =>
-        assertSafeTestEnvironment('postgresql://postgres@localhost:5432/voidline_dev'),
+        assertSafeTestEnvironment('postgresql://postgres@localhost:5432/europa_dev'),
       ).toThrow(/Target database URL does not contain 'test'/i);
     });
   });

@@ -258,7 +258,7 @@ export async function checkAndFlagReReviewNeeded(
       eventId: event.id,
       actionType: 'RE_REVIEW_REQUIRED',
       actorType: 'SYSTEM',
-      actorId: 'VOIDLINE_ENGINE',
+      actorId: 'EUROPA_ENGINE',
       payload: {
         previousReviewStatus: event.review_status,
         priorUrgency: priorAssessment.urgency_level,

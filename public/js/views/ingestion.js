@@ -71,7 +71,7 @@ export async function renderIngestion(container) {
               value="${state.get('operatorApiKey') || ''}"
             />
             <span style="font-size: 11px; color: var(--text-muted);">
-              Write operations require operator authorization. Default dev key is <code style="color: #cbd5e1;">voidline-dev-key</code>.
+              Write operations require operator authorization. Default dev key is <code style="color: #cbd5e1;">europa-dev-key</code>.
             </span>
           </div>
 
@@ -227,7 +227,7 @@ function setupUploadInteractions(container) {
     if (keyInput && keyInput.value.trim()) {
       state.set('operatorApiKey', keyInput.value.trim());
     } else if (!state.hasOperatorAuth()) {
-      state.set('operatorApiKey', 'voidline-dev-key');
+      state.set('operatorApiKey', 'europa-dev-key');
     }
 
     btnLoadSample.disabled = true;

@@ -45,9 +45,7 @@ export async function applyMigrations(options = {}) {
   try {
     // Acquire transaction-scoped advisory lock for migrations
     await client.query('BEGIN;');
-    await client.query(
-      "SELECT pg_advisory_xact_lock(hashtext('voidline_schema_migrations_lock'));",
-    );
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('europa_schema_migrations_lock'));");
     await ensureMigrationsTable(client);
 
     // Fetch applied migrations

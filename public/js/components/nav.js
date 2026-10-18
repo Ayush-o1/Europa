@@ -104,7 +104,7 @@ export function openOperatorAuthModal() {
         placeholder="Enter operator API key..."
         value="${currentKey}"
       />
-      <span style="font-size: 11px; color: var(--text-muted);">Default development key: <code style="color: #cbd5e1;">voidline-dev-key</code></span>
+      <span style="font-size: 11px; color: var(--text-muted);">Default development key: <code style="color: #cbd5e1;">europa-dev-key</code></span>
     </div>
 
     <div class="form-group" style="margin-bottom: var(--space-3);">

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Voidline Main Frontend Application Controller
+ * @fileoverview Europa Main Frontend Application Controller
  *
  * Bootstraps the analytical workbench, binds navigation tabs, manages URL hash routing,
  * and dynamically renders view modules.

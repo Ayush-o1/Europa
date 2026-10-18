@@ -45,7 +45,7 @@ export async function reapPastTcaEvents(options = {}) {
         eventId: row.id,
         actionType: 'LIFECYCLE_TRANSITION',
         actorType: 'SYSTEM',
-        actorId: 'VOIDLINE_ENGINE',
+        actorId: 'EUROPA_ENGINE',
         payload: {
           previousState: 'MONITORING',
           newState: 'PAST_TCA',

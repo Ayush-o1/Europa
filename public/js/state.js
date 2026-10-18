@@ -1,5 +1,5 @@
 /**
- * @fileoverview Voidline Client State Management
+ * @fileoverview Europa Client State Management
  *
  * Manages reactive in-memory state for active view, selected encounter event,
  * query filters, and transient operator credentials.

@@ -80,7 +80,7 @@ export async function recordAssessment(
     eventId,
     actionType: 'ASSESSMENT_RECORDED',
     actorType: 'SYSTEM',
-    actorId: 'VOIDLINE_ENGINE',
+    actorId: 'EUROPA_ENGINE',
     payload: {
       assessmentId: res.rows[0].id,
       observationId: observationId || null,

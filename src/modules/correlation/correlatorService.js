@@ -198,7 +198,7 @@ export async function correlateBatch(batchId, options = {}) {
             eventId: createdEvent.id,
             actionType: 'EVENT_CREATED',
             actorType: 'SYSTEM',
-            actorId: 'VOIDLINE_ENGINE',
+            actorId: 'EUROPA_ENGINE',
             payload: {
               canonicalPairKey: createdEvent.canonical_pair_key,
               initialTca: createdEvent.initial_tca,
@@ -299,7 +299,7 @@ export async function correlateBatch(batchId, options = {}) {
             eventId: updatedEventRecord.id,
             actionType: 'EVENT_CORRELATED',
             actorType: 'SYSTEM',
-            actorId: 'VOIDLINE_ENGINE',
+            actorId: 'EUROPA_ENGINE',
             payload: {
               decisionType,
               observationId: obs.id,

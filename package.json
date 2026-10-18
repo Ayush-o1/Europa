@@ -1,5 +1,5 @@
 {
-  "name": "voidline",
+  "name": "europa",
   "version": "0.1.0",
   "description": "Satellite close-approach correlation and review-priority platform",
   "type": "module",
@@ -22,7 +22,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ayush-o1/Voidline.git"
+    "url": "git+https://github.com/Ayush-o1/Europa.git"
   },
   "keywords": [
     "space-situational-awareness",

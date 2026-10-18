@@ -16,7 +16,7 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
-          POSTGRES_DB: voidline_test
+          POSTGRES_DB: europa_test
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
@@ -28,7 +28,7 @@ jobs:
 
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres@localhost:5432/voidline_test
+      DATABASE_URL: postgresql://postgres@localhost:5432/europa_test
       OPERATOR_API_KEY: test-operator-key
 
     steps:

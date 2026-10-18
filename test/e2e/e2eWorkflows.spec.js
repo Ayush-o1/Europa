@@ -1,8 +1,8 @@
 /**
  * @fileoverview Part 7A: Real Browser End-to-End Test Suite
  *
- * Exercises the complete Voidline system:
- * Browser DOM <-> Frontend JS <-> Express REST API <-> Domain Services <-> PostgreSQL (voidline_test)
+ * Exercises the complete Europa system:
+ * Browser DOM <-> Frontend JS <-> Express REST API <-> Domain Services <-> PostgreSQL (europa_test)
  *
  * Scenarios covered:
  * Scenario A — Fresh installation & readiness
@@ -49,7 +49,7 @@ test.describe('Part 7A: Real Browser End-to-End Workflows', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Verify Title and Meta
-    await expect(page).toHaveTitle(/Voidline — Satellite Conjunction & Assessment Workbench/);
+    await expect(page).toHaveTitle(/Europa — Satellite Conjunction & Assessment Workbench/);
 
     // 2. Health indicator reports actual server and database state
     const statusText = page.locator('#system-status-text');

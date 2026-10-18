@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * @fileoverview CLI Migration Runner for Voidline
+ * @fileoverview CLI Migration Runner for Europa
  */
 
 import { applyMigrations, getMigrationStatus } from '../src/db/migrator.js';
 import { closePool } from '../src/db/pool.js';
 
 async function main() {
-  console.log('--- Voidline Database Migration Runner ---');
+  console.log('--- Europa Database Migration Runner ---');
   try {
     const { applied, alreadyApplied } = await applyMigrations();
     console.log(`Already applied (${alreadyApplied.length}):`, alreadyApplied.join(', ') || 'none');
